@@ -1,0 +1,10 @@
+{
+  "description": "Streamlines college placement management by providing students with a dashboard to track profiles, applications, and upcoming placement drives efficiently.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
