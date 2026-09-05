@@ -2,22 +2,14 @@ import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import type { Page } from "../App";
+import type { UserProfile } from "../types/user";
 
 interface Props {
   onNav: (p: Page) => void;
   activePage: Page;
+  user: UserProfile;
 }
 
-const skills = [
-  "React",
-  "TypeScript",
-  "Node.js",
-  "Python",
-  "SQL",
-  "Git",
-  "Data Structures",
-  "Algorithms",
-];
 const certs = [
   {
     name: "AWS Cloud Practitioner",
@@ -31,14 +23,18 @@ const certs = [
   },
 ];
 
-export default function ProfilePage({ onNav, activePage }: Props) {
-  const [editMode, setEditMode] = useState(false);
-  const [resumeUploaded, setResumeUploaded] = useState(false);
+export default function ProfilePage({ onNav, activePage, user }: Props) {
+  const [resumeUploaded, setResumeUploaded] = useState(user.resumeUploaded);
+
+  const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`;
 
   const completionItems = [
-    { label: "Basic Info", done: true },
-    { label: "Academic Details", done: true },
-    { label: "Skills", done: true },
+    {
+      label: "Basic Info",
+      done: !!(user.firstName && user.lastName && user.phone),
+    },
+    { label: "Academic Details", done: !!(user.cgpa && user.branch) },
+    { label: "Skills", done: user.skills.length > 0 },
     { label: "Projects", done: true },
     { label: "Resume Upload", done: resumeUploaded },
     { label: "Profile Photo", done: false },
@@ -64,7 +60,6 @@ export default function ProfilePage({ onNav, activePage }: Props) {
               className="bg-white rounded-2xl overflow-hidden mb-6"
               style={{ border: "1px solid #e2e8f0" }}
             >
-              {/* Banner */}
               <div
                 className="h-28 relative"
                 style={{
@@ -79,32 +74,31 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                       "radial-gradient(circle at 20% 50%, white 0%, transparent 50%), radial-gradient(circle at 80% 20%, white 0%, transparent 40%)",
                   }}
                 />
-                <div className="absolute top-3 right-4">
-                  <button
-                    onClick={() => setEditMode(!editMode)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-white/30"
-                    style={{
-                      background: "rgba(255,255,255,0.2)",
-                      color: "white",
-                    }}
+                {/* Settings shortcut */}
+                <button
+                  onClick={() => onNav("settings")}
+                  className="absolute top-3 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-white/30"
+                  style={{
+                    background: "rgba(255,255,255,0.18)",
+                    color: "white",
+                  }}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    {editMode ? "Save Profile" : "Edit Profile"}
-                  </button>
-                </div>
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  Edit in Settings
+                </button>
               </div>
+
               <div className="px-6 pb-6">
-                {/* Avatar row */}
                 <div className="flex items-end justify-between -mt-10 mb-4">
                   <div className="relative">
                     <div
@@ -113,7 +107,7 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                         background: "linear-gradient(135deg, #1d4ed8, #60a5fa)",
                       }}
                     >
-                      MV
+                      {initials}
                     </div>
                     <div
                       className="absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
@@ -149,27 +143,43 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                     >
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                     </svg>
-                    +91 98765 43210
+                    {user.phone}
                   </div>
                 </div>
 
-                {/* Name block */}
                 <h2
                   className="text-xl font-bold text-slate-900"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Mayank Verma
+                  {user.firstName} {user.lastName}
                 </h2>
                 <p className="text-slate-500 text-sm mt-0.5">
-                  B.Tech Computer Science • NIT Raipur • Class of 2025
+                  B.Tech {user.branch} • NIT Raipur • Class of 2025
                 </p>
 
-                {/* Tags */}
+                {user.bio && (
+                  <p className="text-slate-500 text-sm mt-2 max-w-lg leading-relaxed">
+                    {user.bio}
+                  </p>
+                )}
+
                 <div className="flex flex-wrap gap-2 mt-3">
                   {[
-                    { label: "CGPA: 8.4", color: "#2563eb", bg: "#eff6ff" },
-                    { label: "10th: 92%", color: "#0891b2", bg: "#ecfeff" },
-                    { label: "12th: 88%", color: "#7c3aed", bg: "#f5f3ff" },
+                    {
+                      label: `CGPA: ${user.cgpa}`,
+                      color: "#2563eb",
+                      bg: "#eff6ff",
+                    },
+                    {
+                      label: `10th: ${user.tenthPercent}%`,
+                      color: "#0891b2",
+                      bg: "#ecfeff",
+                    },
+                    {
+                      label: `12th: ${user.twelfthPercent}%`,
+                      color: "#7c3aed",
+                      bg: "#f5f3ff",
+                    },
                     {
                       label: "No Active Backlog",
                       color: "#059669",
@@ -185,23 +195,96 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                     </span>
                   ))}
                 </div>
+
+                {/* Social links */}
+                {(user.linkedin || user.github || user.portfolio) && (
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    {user.linkedin && (
+                      <a
+                        href={`https://${user.linkedin}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
+                          <circle cx="4" cy="4" r="2" />
+                        </svg>
+                        {user.linkedin}
+                      </a>
+                    )}
+                    {user.github && (
+                      <a
+                        href={`https://${user.github}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:underline"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+                        </svg>
+                        {user.github}
+                      </a>
+                    )}
+                    {user.portfolio && (
+                      <a
+                        href={`https://${user.portfolio}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:underline"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="2" y1="12" x2="22" y2="12" />
+                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                        </svg>
+                        {user.portfolio}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              {/* Left: completion + skills + certs */}
+              {/* Left */}
               <div className="space-y-5">
-                {/* Profile completion */}
+                {/* Completion */}
                 <div
                   className="bg-white rounded-2xl p-5"
                   style={{ border: "1px solid #e2e8f0" }}
                 >
-                  <h3
-                    className="text-sm font-semibold text-slate-800 mb-3"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    Profile Completion
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3
+                      className="text-sm font-semibold text-slate-800"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      Profile Completion
+                    </h3>
+                    <button
+                      onClick={() => onNav("settings")}
+                      className="text-xs text-blue-600 hover:underline font-medium"
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="flex items-center justify-between mb-2">
                     <span
                       className="text-2xl font-bold text-blue-600"
@@ -269,31 +352,51 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                   className="bg-white rounded-2xl p-5"
                   style={{ border: "1px solid #e2e8f0" }}
                 >
-                  <h3
-                    className="text-sm font-semibold text-slate-800 mb-3"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    Technical Skills
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map((s) => (
-                      <span
-                        key={s}
-                        className="text-xs font-medium px-2.5 py-1 rounded-lg"
-                        style={{
-                          background: "#eff6ff",
-                          color: "#1d4ed8",
-                          border: "1px solid #bfdbfe",
-                        }}
-                      >
-                        {s}
-                      </span>
-                    ))}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3
+                      className="text-sm font-semibold text-slate-800"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      Technical Skills
+                    </h3>
+                    <button
+                      onClick={() => onNav("settings")}
+                      className="text-xs text-blue-600 hover:underline font-medium"
+                    >
+                      Edit
+                    </button>
                   </div>
+                  {user.skills.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {user.skills.map((s) => (
+                        <span
+                          key={s}
+                          className="text-xs font-medium px-2.5 py-1 rounded-lg"
+                          style={{
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                            border: "1px solid #bfdbfe",
+                          }}
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      No skills added yet.{" "}
+                      <button
+                        onClick={() => onNav("settings")}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Add skills
+                      </button>
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Right: academic + projects + resume */}
+              {/* Right */}
               <div className="lg:col-span-2 space-y-5">
                 {/* Academic */}
                 <div
@@ -311,20 +414,23 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                       {
                         label: "B.Tech CSE",
                         inst: "NIT Raipur",
-                        score: "CGPA: 8.4 / 10",
+                        score: `CGPA: ${user.cgpa} / 10`,
                         year: "2021–2025",
+                        color: "#1d4ed8",
                       },
                       {
                         label: "Class XII (CBSE)",
                         inst: "Delhi Public School, Raipur",
-                        score: "88.6%",
+                        score: `${user.twelfthPercent}%`,
                         year: "2021",
+                        color: "#0891b2",
                       },
                       {
                         label: "Class X (CBSE)",
                         inst: "Delhi Public School, Raipur",
-                        score: "92.4%",
+                        score: `${user.tenthPercent}%`,
                         year: "2019",
+                        color: "#7c3aed",
                       },
                     ].map((a, i) => (
                       <div
@@ -338,9 +444,7 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                         <div className="flex items-center gap-3">
                           <div
                             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
-                            style={{
-                              background: ["#1d4ed8", "#0891b2", "#7c3aed"][i],
-                            }}
+                            style={{ background: a.color }}
                           >
                             {a.label[0]}
                           </div>
@@ -386,13 +490,11 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                         name: "Online Exam Proctoring System",
                         tech: "React, Node.js, WebRTC, MongoDB",
                         desc: "AI-powered live proctoring with face detection and tab-switch alerts.",
-                        link: true,
                       },
                       {
                         name: "E-Commerce Recommendation Engine",
                         tech: "Python, FastAPI, Collaborative Filtering",
                         desc: "Personalized product recommendations achieving 78% click-through improvement.",
-                        link: true,
                       },
                     ].map((p, i) => (
                       <div
@@ -407,21 +509,19 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                           <h4 className="text-sm font-semibold text-slate-800">
                             {p.name}
                           </h4>
-                          {p.link && (
-                            <svg
-                              width="13"
-                              height="13"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="#94a3b8"
-                              strokeWidth="2"
-                              className="flex-shrink-0 mt-0.5 group-hover:stroke-blue-500 transition-colors"
-                            >
-                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                              <polyline points="15 3 21 3 21 9" />
-                              <line x1="10" y1="14" x2="21" y2="3" />
-                            </svg>
-                          )}
+                          <svg
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#94a3b8"
+                            strokeWidth="2"
+                            className="flex-shrink-0 mt-0.5 group-hover:stroke-blue-500 transition-colors"
+                          >
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
                         </div>
                         <p className="text-xs text-slate-500 mt-1">{p.desc}</p>
                         <div className="flex flex-wrap gap-1.5 mt-2">
@@ -503,7 +603,7 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                   </div>
                 </div>
 
-                {/* Resume upload */}
+                {/* Resume */}
                 <div
                   className="rounded-2xl p-5"
                   style={{
@@ -531,7 +631,7 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                       </div>
                       <div className="flex-1">
                         <div className="text-sm font-semibold text-green-800">
-                          Mayank_Verma_Resume.pdf
+                          {user.firstName}_{user.lastName}_Resume.pdf
                         </div>
                         <div className="text-xs text-green-600">
                           Uploaded successfully
@@ -567,7 +667,7 @@ export default function ProfilePage({ onNav, activePage }: Props) {
                       </p>
                       <button
                         onClick={() => setResumeUploaded(true)}
-                        className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                        className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90"
                         style={{
                           background:
                             "linear-gradient(135deg, #1d4ed8, #3b82f6)",
