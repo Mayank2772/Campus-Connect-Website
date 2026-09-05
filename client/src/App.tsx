@@ -14,8 +14,6 @@ export type Page =
   | "profile"
   | "drives"
   | "applications"
-  | "schedule"
-  | "notifications"
   | "settings";
 
 export interface ApplicationEntry {
