@@ -230,7 +230,7 @@ function Avatar({ name }) {
   const color = colors[name.charCodeAt(0) % colors.length];
   return (
     <div
-      className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
+      className="flex items-center justify-center rounded-full text-white text-xs font-bold shrink-0"
       style={{ width: 34, height: 34, background: color }}>
       {initials}
     </div>
