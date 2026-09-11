@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { drives } from "../data/data";
 import Topbar from "../components/Topbar";
 
@@ -9,14 +10,11 @@ const STEPS = [
   "Review & Submit",
 ];
 
-export default function ApplyPage({
-  driveId,
-  onBack,
-  onNav,
-  activePage,
-  onApply,
-}) {
-  const d = drives.find((dr) => dr.id === driveId);
+export default function ApplyPage({ onApply }) {
+  const { driveId } = useParams();
+  const navigate = useNavigate();
+  const parsedId = parseInt(driveId, 10);
+  const d = drives.find((dr) => dr.id === parsedId);
   if (!d) return null;
 
   const [step, setStep] = useState(0);
@@ -45,8 +43,28 @@ export default function ApplyPage({
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const handleSubmit = () => {
-    onApply();
+  const handleSubmit = async () => {
+    const payload = {
+      driveId: parsedId,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      phone: form.phone,
+      rollNumber: form.rollNumber,
+      branch: form.branch,
+      semester: form.semester,
+      cgpa: form.cgpa,
+      tenthPercent: form.tenthPercent,
+      twelfthPercent: form.twelfthPercent,
+      backlogs: form.backlogs,
+      coverLetter: form.coverLetter,
+      referral: form.referral,
+      linkedin: form.linkedin,
+      github: form.github,
+      portfolio: form.portfolio,
+    };
+    // TODO: Replace with API call → await apiClient.post('/applications/apply', payload)
+    await onApply(parsedId, payload);
     setSubmitted(true);
   };
 
@@ -56,7 +74,7 @@ export default function ApplyPage({
         className="flex h-screen overflow-hidden"
         style={{ background: "#f0f6ff" }}>
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Topbar title="Apply Now" onNav={onNav} />
+          <Topbar title="Apply Now" />
           <main className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
             <div className="max-w-md w-full text-center">
               {/* Success animation */}
@@ -190,7 +208,7 @@ export default function ApplyPage({
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => onNav("applications")}
+                  onClick={() => navigate("/applications")}
                   className="flex-1 h-11 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-white"
                   style={{
                     background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
@@ -199,7 +217,7 @@ export default function ApplyPage({
                   Track Application
                 </button>
                 <button
-                  onClick={() => onNav("drives")}
+                  onClick={() => navigate("/drives")}
                   className="flex-1 h-11 rounded-xl text-sm font-semibold transition-all hover:bg-slate-100"
                   style={{
                     background: "white",
@@ -221,15 +239,14 @@ export default function ApplyPage({
     <div
       className="flex h-screen overflow-hidden"
       style={{ background: "#f0f6ff" }}>
-      <Sidebar activePage={activePage} onNav={onNav} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Topbar title="Apply Now" onNav={onNav} />
+        <Topbar title="Apply Now" />
 
         <main className="flex-1 overflow-y-auto p-6">
           {/* Back button */}
           <button
-            onClick={onBack}
+            onClick={() => navigate(`/drives/${parsedId}`)}
             className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-blue-600 mb-5 transition-colors group">
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors group-hover:bg-blue-50"
@@ -937,7 +954,7 @@ export default function ApplyPage({
             {/* Navigation buttons */}
             <div className="flex items-center justify-between mt-5">
               <button
-                onClick={() => (step === 0 ? onBack() : setStep(step - 1))}
+                onClick={() => (step === 0 ? navigate(`/drives/${parsedId}`) : setStep(step - 1))}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-slate-200"
                 style={{
                   background: "#f1f5f9",

@@ -1,16 +1,15 @@
+import { useParams, useNavigate } from "react-router-dom";
 import { drives } from "../data/data";
 import Topbar from "../components/Topbar";
 
-export default function DriveDetailPage({
-  driveId,
-  onBack,
-  onNav,
-  activePage,
-  hasApplied,
-  onApply,
-}) {
-  const d = drives.find((dr) => dr.id === driveId);
+export default function DriveDetailPage({ onNav, hasApplied, onApply }) {
+  const { driveId } = useParams();
+  const navigate = useNavigate();
+  const parsedId = parseInt(driveId, 10);
+  const d = drives.find((dr) => dr.id === parsedId);
   if (!d) return null;
+
+  const applied = hasApplied(parsedId);
 
   const daysLeft = Math.ceil(
     (d.deadlineDate.getTime() - Date.now()) / 86400000,
@@ -30,7 +29,7 @@ export default function DriveDetailPage({
         <main className="flex-1 overflow-y-auto p-6">
           {/* Back button */}
           <button
-            onClick={onBack}
+            onClick={() => navigate("/drives")}
             className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-blue-600 mb-5 transition-colors group">
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors group-hover:bg-blue-50"
@@ -114,7 +113,7 @@ export default function DriveDetailPage({
                     <div className="text-xs text-slate-400">
                       Range: {d.packageRange}
                     </div>
-                    {hasApplied ? (
+                    {applied ? (
                       <span
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
                         style={{ background: "#dcfce7", color: "#15803d" }}>
@@ -131,7 +130,7 @@ export default function DriveDetailPage({
                       </span>
                     ) : d.eligible ? (
                       <button
-                        onClick={onApply}
+                        onClick={() => onApply(parsedId)}
                         className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 shadow-sm"
                         style={{
                           background:
@@ -471,7 +470,7 @@ export default function DriveDetailPage({
                 </div>
 
                 {/* CTA */}
-                {!hasApplied && d.eligible && (
+                {!applied && d.eligible && (
                   <div
                     className="rounded-2xl p-5 flex items-center justify-between gap-4"
                     style={{
@@ -492,7 +491,7 @@ export default function DriveDetailPage({
                       </p>
                     </div>
                     <button
-                      onClick={onApply}
+                      onClick={() => onApply(parsedId)}
                       className="flex-shrink-0 px-6 py-2.5 rounded-xl text-sm font-bold transition-all hover:bg-white/90 active:scale-95"
                       style={{
                         background: "white",
@@ -504,7 +503,7 @@ export default function DriveDetailPage({
                   </div>
                 )}
 
-                {hasApplied && (
+                {applied && (
                   <div
                     className="rounded-2xl p-5 flex items-center gap-4"
                     style={{

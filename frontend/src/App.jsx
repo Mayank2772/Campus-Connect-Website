@@ -110,7 +110,9 @@ function AuthenticatedApp() {
   const [applications, setApplications] = useState([]);
   const [user, setUser] = useState(defaultUser);
 
-  const applyToDrive = (driveId) => {
+  // TODO: When integrating API, replace body with:
+  // await apiClient.post('/applications/apply', payload)
+  const applyToDrive = (driveId, payload = {}) => {
     setApplications((prev) => {
       const alreadyApplied = prev.some(
         (application) => application.driveId === driveId,
@@ -126,6 +128,7 @@ function AuthenticatedApp() {
           driveId,
           appliedAt: new Date(),
           status: "Applied",
+          payload, // form data — ready to send to backend
         },
       ];
     });
