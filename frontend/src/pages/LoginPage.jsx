@@ -1,15 +1,59 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { login } from "../api/auth";
+import { useNavigate } from "react-router-dom";
 export default function LoginPage({ onLogin }) {
+  const [email, setEmail] = useState("");
+
+  const [password, setPassword] = useState("");
+
+  const [error, setError] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setError("");
+
+    try {
+      setLoading(true);
+
+      const response = await login({
+        email: email,
+        password: password,
+      });
+
+      localStorage.setItem("token", response.token);
+
+      const userData = {
+        ...response.user,
+        ...response.student,
+      };
+
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      onLogin();
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div
       className="min-h-screen flex"
-      style={{ fontFamily: "var(--font-body)" }}>
+      style={{ fontFamily: "var(--font-body)" }}
+    >
       {/* Left panel */}
       <div
         className="hidden lg:flex flex-col justify-between w-[46%] p-12 relative overflow-hidden"
         style={{
           background:
             "linear-gradient(145deg, #0f2a5e 0%, #1d4ed8 60%, #3b82f6 100%)",
-        }}>
+        }}
+      >
         {/* Decorative circles */}
         <div
           className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-10"
@@ -47,7 +91,8 @@ export default function LoginPage({ onLogin }) {
           </div>
           <span
             className="text-white text-xl font-bold tracking-tight"
-            style={{ fontFamily: "var(--font-display)" }}>
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             CampusConnect
           </span>
         </div>
@@ -56,14 +101,15 @@ export default function LoginPage({ onLogin }) {
         <div className="relative z-10">
           <h1
             className="text-white text-4xl font-bold leading-tight mb-4"
-            style={{ fontFamily: "var(--font-display)" }}>
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             Your Career
             <br />
             Starts Here
           </h1>
           <p className="text-blue-200 text-base leading-relaxed max-w-xs">
             Connect with top companies, track your applications, and land your
-            dream placement — all in one place.
+            placement opportunities — all in one place.
           </p>
 
           {/* Stats row */}
@@ -76,7 +122,8 @@ export default function LoginPage({ onLogin }) {
               <div key={s.label}>
                 <div
                   className="text-white text-2xl font-bold"
-                  style={{ fontFamily: "var(--font-display)" }}>
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
                   {s.value}
                 </div>
                 <div className="text-blue-300 text-xs mt-0.5">{s.label}</div>
@@ -106,7 +153,8 @@ export default function LoginPage({ onLogin }) {
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{
                 background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
-              }}>
+              }}
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" fill="white" />
                 <path
@@ -120,32 +168,36 @@ export default function LoginPage({ onLogin }) {
             </div>
             <span
               className="text-slate-900 text-lg font-bold"
-              style={{ fontFamily: "var(--font-display)" }}>
+              style={{ fontFamily: "var(--font-display)" }}
+            >
               CampusConnect
             </span>
           </div>
 
           <h2
             className="text-2xl font-bold text-slate-900 mb-1"
-            style={{ fontFamily: "var(--font-display)" }}>
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             Welcome back
           </h2>
           <p className="text-slate-500 text-sm mb-8">
             Sign in to your student account
           </p>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              onLogin();
-            }}>
+          {error && (
+            <div className="mb-5 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Student ID / Email
               </label>
               <input
                 type="text"
-                defaultValue="mayank.verma@college.edu"
+                placeholder="Enter your College Email Id"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-11 px-4 rounded-xl border text-sm outline-none transition-all"
                 style={{
                   borderColor: "#e2e8f0",
@@ -162,7 +214,9 @@ export default function LoginPage({ onLogin }) {
               </label>
               <input
                 type="password"
-                defaultValue="••••••••"
+                value={password}
+                placeholder="Enter your password"
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full h-11 px-4 rounded-xl border text-sm outline-none transition-all"
                 style={{
                   borderColor: "#e2e8f0",
@@ -176,7 +230,9 @@ export default function LoginPage({ onLogin }) {
             <div className="flex justify-end mb-6">
               <button
                 type="button"
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                onClick={() => navigate("/forgot-password")}
+              >
                 Forgot password?
               </button>
             </div>
@@ -187,16 +243,30 @@ export default function LoginPage({ onLogin }) {
               style={{
                 background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
                 fontFamily: "var(--font-display)",
-              }}>
-              Sign In
+              }}
+            >
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
-          <p className="text-center text-xs text-slate-400 mt-8">
+          <p className="text-center text-sm text-slate-500 mt-6">
+            Don't have an account?{" "}
+            <Link
+              to="/signup"
+              className="text-blue-600 font-medium hover:underline"
+            >
+              Create account
+            </Link>
+          </p>
+
+          <p className="text-center text-xs text-slate-400 mt-4">
             Having trouble? Contact{" "}
-            <span className="text-blue-600 cursor-pointer hover:underline">
-              placement@college.edu
-            </span>
+            <a
+              href="mailto:placements@thapar.edu"
+              className="text-blue-600 cursor-pointer hover:underline"
+            >
+              placements@thapar.edu
+            </a>
           </p>
 
           {/* Institution badge */}
@@ -204,8 +274,9 @@ export default function LoginPage({ onLogin }) {
             <p className="text-xs text-slate-400">Powered by</p>
             <p
               className="text-sm font-semibold text-slate-600 mt-0.5"
-              style={{ fontFamily: "var(--font-display)" }}>
-              National Institute of Technology
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              TIET
             </p>
             <p className="text-xs text-slate-400">Training & Placement Cell</p>
           </div>

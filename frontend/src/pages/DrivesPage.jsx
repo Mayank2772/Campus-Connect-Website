@@ -1,14 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Topbar from "../components/Topbar";
-import { drives } from "../data/data";
 
-const tags = ["All", "Super Dream", "Dream", "Mass", "PPO"];
-const types = ["All", "Full-Time", "Internship"];
-const eligibilityFilters = ["All", "Eligible Only"];
+const types = ["All", "Full-Time", "Internship", "PPO"];
 
 export default function DrivesPage({
+  drives,
   onNav,
-  activePage,
   onSelectDrive,
   hasApplied,
   onApply,
@@ -16,8 +13,13 @@ export default function DrivesPage({
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("All");
   const [activeType, setActiveType] = useState("All");
-  const [eligFilter, setEligFilter] = useState("All");
   const [sortBy, setSortBy] = useState("deadline");
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const filtered = useMemo(() => {
     let list = [...drives];
@@ -35,8 +37,6 @@ export default function DrivesPage({
 
     if (activeTag !== "All") list = list.filter((d) => d.tag === activeTag);
     if (activeType !== "All") list = list.filter((d) => d.type === activeType);
-    if (eligFilter === "Eligible Only") list = list.filter((d) => d.eligible);
-
     list.sort((a, b) =>
       sortBy === "deadline"
         ? a.deadlineDate.getTime() - b.deadlineDate.getTime()
@@ -45,12 +45,13 @@ export default function DrivesPage({
     );
 
     return list;
-  }, [query, activeTag, activeType, eligFilter, sortBy]);
+  }, [drives, query, activeTag, activeType, sortBy]);
 
   return (
     <div
       className="flex h-screen overflow-hidden"
-      style={{ background: "#f0f6ff" }}>
+      style={{ background: "#f0f6ff" }}
+    >
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Topbar title="Placement Drives" onNav={onNav} />
 
@@ -80,7 +81,7 @@ export default function DrivesPage({
                 label: "Closing Soon",
                 value: drives.filter((d) => {
                   const days = Math.ceil(
-                    (d.deadlineDate.getTime() - Date.now()) / 86400000,
+                    (d.deadlineDate.getTime() - now.getTime()) / 86400000,
                   );
                   return days <= 15 && days > 0;
                 }).length,
@@ -91,14 +92,16 @@ export default function DrivesPage({
               <div
                 key={s.label}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white"
-                style={{ border: "1px solid #e2e8f0" }}>
+                style={{ border: "1px solid #e2e8f0" }}
+              >
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm"
                   style={{
                     background: s.bg,
                     color: s.color,
                     fontFamily: "var(--font-display)",
-                  }}>
+                  }}
+                >
                   {s.value}
                 </div>
                 <span className="text-sm text-slate-600 font-medium">
@@ -111,7 +114,8 @@ export default function DrivesPage({
           {/* Search + filters */}
           <div
             className="bg-white rounded-2xl p-4 mb-5"
-            style={{ border: "1px solid #e2e8f0" }}>
+            style={{ border: "1px solid #e2e8f0" }}
+          >
             {/* Search bar */}
             <div className="relative mb-4">
               <svg
@@ -123,7 +127,8 @@ export default function DrivesPage({
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
-                strokeLinejoin="round">
+                strokeLinejoin="round"
+              >
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
@@ -150,14 +155,16 @@ export default function DrivesPage({
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
                   <svg
                     width="14"
                     height="14"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2">
+                    strokeWidth="2"
+                  >
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
@@ -181,38 +188,14 @@ export default function DrivesPage({
                     style={{
                       background: activeType === t ? "#7c3aed" : "#f1f5f9",
                       color: activeType === t ? "white" : "#475569",
-                    }}>
+                    }}
+                  >
                     {t}
                   </button>
                 ))}
               </div>
 
               <div className="w-px h-5 bg-slate-200 hidden sm:block" />
-
-              {/* Eligibility toggle */}
-              <button
-                onClick={() =>
-                  setEligFilter(eligFilter === "All" ? "Eligible Only" : "All")
-                }
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
-                style={{
-                  background:
-                    eligFilter === "Eligible Only" ? "#059669" : "#f1f5f9",
-                  color: eligFilter === "Eligible Only" ? "white" : "#475569",
-                }}>
-                {eligFilter === "Eligible Only" && (
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-                Eligible Only
-              </button>
 
               {/* Sort */}
               <div className="ml-auto flex items-center gap-2">
@@ -226,7 +209,8 @@ export default function DrivesPage({
                     color: "#475569",
                     border: "none",
                     fontFamily: "var(--font-body)",
-                  }}>
+                  }}
+                >
                   <option value="deadline">Deadline</option>
                   <option value="package">Package</option>
                 </select>
@@ -250,7 +234,8 @@ export default function DrivesPage({
           {filtered.length === 0 ? (
             <div
               className="bg-white rounded-2xl p-16 text-center"
-              style={{ border: "1px solid #e2e8f0" }}>
+              style={{ border: "1px solid #e2e8f0" }}
+            >
               <svg
                 className="mx-auto mb-3"
                 width="40"
@@ -258,7 +243,8 @@ export default function DrivesPage({
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="#cbd5e1"
-                strokeWidth="1.5">
+                strokeWidth="1.5"
+              >
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
@@ -273,9 +259,9 @@ export default function DrivesPage({
                   setQuery("");
                   setActiveTag("All");
                   setActiveType("All");
-                  setEligFilter("All");
                 }}
-                className="mt-4 text-xs font-semibold text-blue-600 hover:underline">
+                className="mt-4 text-xs font-semibold text-blue-600 hover:underline"
+              >
                 Clear all filters
               </button>
             </div>
@@ -283,7 +269,7 @@ export default function DrivesPage({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {filtered.map((d) => {
                 const daysLeft = Math.ceil(
-                  (d.deadlineDate.getTime() - Date.now()) / 86400000,
+                  (d.deadlineDate.getTime() - now.getTime()) / 86400000,
                 );
                 const applied = hasApplied(d.id);
                 return (
@@ -291,19 +277,22 @@ export default function DrivesPage({
                     key={d.id}
                     className="bg-white rounded-2xl p-5 cursor-pointer group transition-all hover:shadow-md hover:-translate-y-0.5"
                     style={{ border: "1px solid #e2e8f0" }}
-                    onClick={() => onSelectDrive(d.id)}>
+                    onClick={() => onSelectDrive(d.id)}
+                  >
                     {/* Top row */}
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3">
                         <div
                           className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-base flex-shrink-0"
-                          style={{ background: d.logoColor }}>
+                          style={{ background: d.logoColor }}
+                        >
                           {d.logo}
                         </div>
                         <div>
                           <div
                             className="font-bold text-slate-900 text-sm"
-                            style={{ fontFamily: "var(--font-display)" }}>
+                            style={{ fontFamily: "var(--font-display)" }}
+                          >
                             {d.company}
                           </div>
                           <div className="text-xs text-slate-500 mt-0.5">
@@ -317,17 +306,27 @@ export default function DrivesPage({
                           style={{
                             background: d.tagColor + "18",
                             color: d.tagColor,
-                          }}>
+                          }}
+                        >
                           {d.tag}
                         </span>
                         <span
                           className="text-[10px] font-medium px-2 py-0.5 rounded-full"
                           style={{
                             background:
-                              d.type === "Internship" ? "#fef3c7" : "#eff6ff",
+                              d.type === "Internship"
+                                ? "#fef3c7"
+                                : d.type === "PPO"
+                                  ? "#ede9fe"
+                                  : "#eff6ff",
                             color:
-                              d.type === "Internship" ? "#b45309" : "#1d4ed8",
-                          }}>
+                              d.type === "Internship"
+                                ? "#b45309"
+                                : d.type === "PPO"
+                                  ? "#7c3aed"
+                                  : "#1d4ed8",
+                          }}
+                        >
                           {d.type}
                         </span>
                       </div>
@@ -344,7 +343,8 @@ export default function DrivesPage({
                           style={{
                             color: "#1d4ed8",
                             fontFamily: "var(--font-display)",
-                          }}>
+                          }}
+                        >
                           {d.package}
                         </span>
                         <span className="text-xs text-slate-400">CTC</span>
@@ -355,14 +355,16 @@ export default function DrivesPage({
                     <div className="flex flex-wrap gap-2 mb-4">
                       <span
                         className="text-[10px] font-medium px-2 py-1 rounded-lg flex items-center gap-1"
-                        style={{ background: "#f8fafc", color: "#475569" }}>
+                        style={{ background: "#f8fafc", color: "#475569" }}
+                      >
                         <svg
                           width="10"
                           height="10"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                           <circle cx="12" cy="7" r="4" />
                         </svg>
@@ -370,14 +372,16 @@ export default function DrivesPage({
                       </span>
                       <span
                         className="text-[10px] font-medium px-2 py-1 rounded-lg flex items-center gap-1"
-                        style={{ background: "#f8fafc", color: "#475569" }}>
+                        style={{ background: "#f8fafc", color: "#475569" }}
+                      >
                         <svg
                           width="10"
                           height="10"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
                           <rect x="2" y="7" width="20" height="14" rx="2" />
                           <path d="M16 3H8l-2 4h12z" />
                         </svg>
@@ -388,7 +392,8 @@ export default function DrivesPage({
                         style={{
                           background: d.backlogAllowed ? "#ecfdf5" : "#fff7ed",
                           color: d.backlogAllowed ? "#059669" : "#c2410c",
-                        }}>
+                        }}
+                      >
                         {d.backlogAllowed ? "Backlog OK" : "No Backlog"}
                       </span>
                     </div>
@@ -396,7 +401,8 @@ export default function DrivesPage({
                     {/* Bottom row: deadline + actions */}
                     <div
                       className="flex items-center justify-between pt-3"
-                      style={{ borderTop: "1px solid #f1f5f9" }}>
+                      style={{ borderTop: "1px solid #f1f5f9" }}
+                    >
                       <div>
                         <div className="flex items-center gap-1.5">
                           <svg
@@ -405,7 +411,8 @@ export default function DrivesPage({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke={daysLeft <= 7 ? "#dc2626" : "#f59e0b"}
-                            strokeWidth="2">
+                            strokeWidth="2"
+                          >
                             <rect x="3" y="4" width="18" height="18" rx="2" />
                             <line x1="16" y1="2" x2="16" y2="6" />
                             <line x1="8" y1="2" x2="8" y2="6" />
@@ -415,7 +422,8 @@ export default function DrivesPage({
                             className="text-xs font-medium"
                             style={{
                               color: daysLeft <= 7 ? "#dc2626" : "#475569",
-                            }}>
+                            }}
+                          >
                             {d.deadline}
                           </span>
                         </div>
@@ -428,7 +436,8 @@ export default function DrivesPage({
 
                       <div
                         className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}>
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {d.eligible ? (
                           applied ? (
                             <span
@@ -436,14 +445,16 @@ export default function DrivesPage({
                               style={{
                                 background: "#dcfce7",
                                 color: "#15803d",
-                              }}>
+                              }}
+                            >
                               <svg
                                 width="11"
                                 height="11"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="3">
+                                strokeWidth="3"
+                              >
                                 <polyline points="20 6 9 17 4 12" />
                               </svg>
                               Applied
@@ -455,14 +466,16 @@ export default function DrivesPage({
                               style={{
                                 background:
                                   "linear-gradient(135deg, #1d4ed8, #3b82f6)",
-                              }}>
+                              }}
+                            >
                               Apply Now
                             </button>
                           )
                         ) : (
                           <span
                             className="text-xs font-semibold px-4 py-2 rounded-xl"
-                            style={{ background: "#fee2e2", color: "#b91c1c" }}>
+                            style={{ background: "#fee2e2", color: "#b91c1c" }}
+                          >
                             Not Eligible
                           </span>
                         )}
@@ -473,7 +486,8 @@ export default function DrivesPage({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2">
+                            strokeWidth="2"
+                          >
                             <line x1="5" y1="12" x2="19" y2="12" />
                             <polyline points="12 5 19 12 12 19" />
                           </svg>

@@ -1,43 +1,107 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Topbar from "../components/Topbar";
+import { useNavigate } from "react-router-dom";
+import {
+  calculateProfileCompletion,
+  getCompletionItems,
+} from "../utils/profileCompletion";
+import { deleteResume, uploadResume } from "../api/student";
+export default function ProfilePage({ onNav, user: initialUser }) {
+  const [user, setUser] = useState(() => {
+    return initialUser || null;
+  });
+  const [resumeUploaded, setResumeUploaded] = useState(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      const parsed = storedUser ? JSON.parse(storedUser) : null;
+      return Boolean(parsed?.resume);
+    } catch (error) {
+      console.error("Invalid user data:", error);
+      return false;
+    }
+  });
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeError, setResumeError] = useState("");
+  const resumeInputRef = useRef(null);
+  const navigate = useNavigate();
 
-const certs = [
-  {
-    name: "AWS Cloud Practitioner",
-    issuer: "Amazon Web Services",
-    date: "Jan 2025",
-  },
-  {
-    name: "Full Stack Development",
-    issuer: "Coursera (Meta)",
-    date: "Nov 2024",
-  },
-];
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#f0f6ff]">
+        <p className="text-slate-500">Loading profile...</p>
+      </div>
+    );
+  }
 
-export default function ProfilePage({ onNav, activePage, user }) {
-  const [resumeUploaded, setResumeUploaded] = useState(user.resumeUploaded);
+  const initials =
+    `${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`.toUpperCase() ||
+    "S";
 
-  const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`;
+  const skills = user.skills || [];
 
-  const completionItems = [
-    {
-      label: "Basic Info",
-      done: !!(user.firstName && user.lastName && user.phone),
-    },
-    { label: "Academic Details", done: !!(user.cgpa && user.branch) },
-    { label: "Skills", done: user.skills.length > 0 },
-    { label: "Projects", done: true },
-    { label: "Resume Upload", done: resumeUploaded },
-    { label: "Profile Photo", done: false },
-    { label: "Certifications", done: true },
-  ];
-  const doneCount = completionItems.filter((c) => c.done).length;
-  const pct = Math.round((doneCount / completionItems.length) * 100);
+  const academic = user.academicDetails || {};
+  const graduation = academic.graduation || {};
+  const class12 = academic.class12 || {};
+  const class10 = academic.class10 || {};
+
+  const projects = user.projects || [];
+
+  // Academic values
+  const cgpa = graduation.cgpa || 0;
+  const tenthPercentage = class10.percentage || 0;
+  const twelfthPercentage = class12.percentage || 0;
+
+  const activeBacklogs = Number(user.activeBacklogs) || 0;
+
+  const completionItems = getCompletionItems(user);
+  const doneCount = completionItems.filter((item) => item.done).length;
+  const pct = calculateProfileCompletion(user);
+  const saveUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
+  const handleResumeUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    setResumeError("");
+    setResumeUploading(true);
+
+    try {
+      const response = await uploadResume(file);
+      saveUser({
+        ...user,
+        resume: response.resume.id,
+        resumeName: response.resume.fileName,
+      });
+      setResumeUploaded(true);
+    } catch (error) {
+      setResumeError(error.message || "Failed to upload resume.");
+    } finally {
+      setResumeUploading(false);
+    }
+  };
+
+  const handleResumeDelete = async () => {
+    setResumeError("");
+
+    try {
+      await deleteResume();
+      setResumeUploaded(false);
+      saveUser({ ...user, resume: "", resumeName: "" });
+    } catch (error) {
+      setResumeError(error.message || "Failed to remove resume.");
+    }
+  };
 
   return (
     <div
       className="flex h-screen overflow-hidden"
-      style={{ background: "#f0f6ff" }}>
+      style={{ background: "#f0f6ff" }}
+    >
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Topbar title="My Profile" onNav={onNav} />
 
@@ -46,13 +110,15 @@ export default function ProfilePage({ onNav, activePage, user }) {
             {/* Profile hero card */}
             <div
               className="bg-white rounded-2xl overflow-hidden mb-6"
-              style={{ border: "1px solid #e2e8f0" }}>
+              style={{ border: "1px solid #e2e8f0" }}
+            >
               <div
                 className="h-28 relative"
                 style={{
                   background:
                     "linear-gradient(135deg, #0f2a5e 0%, #1d4ed8 60%, #60a5fa 100%)",
-                }}>
+                }}
+              >
                 <div
                   className="absolute inset-0 opacity-10"
                   style={{
@@ -60,23 +126,25 @@ export default function ProfilePage({ onNav, activePage, user }) {
                       "radial-gradient(circle at 20% 50%, white 0%, transparent 50%), radial-gradient(circle at 80% 20%, white 0%, transparent 40%)",
                   }}
                 />
-                {/* Settings shortcut */}
+
                 <button
-                  onClick={() => onNav("settings")}
-                  className="absolute top-3 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-white/30"
+                  onClick={() => navigate("/settings")}
+                  className="absolute top-3 cursor-pointer right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-white/30"
                   style={{
                     background: "rgba(255,255,255,0.18)",
                     color: "white",
-                  }}>
+                  }}
+                >
                   <svg
                     width="12"
                     height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2">
+                    strokeWidth="2"
+                  >
                     <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 0 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                   </svg>
                   Edit in Settings
                 </button>
@@ -89,50 +157,64 @@ export default function ProfilePage({ onNav, activePage, user }) {
                       className="w-20 h-20 rounded-2xl border-4 border-white flex items-center justify-center text-white text-2xl font-bold"
                       style={{
                         background: "linear-gradient(135deg, #1d4ed8, #60a5fa)",
-                      }}>
+                      }}
+                    >
                       {initials}
                     </div>
+
                     <div
                       className="absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
-                      style={{ background: "#10b981" }}>
+                      style={{ background: "#10b981" }}
+                    >
                       <svg
                         width="8"
                         height="8"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="white"
-                        strokeWidth="3">
+                        strokeWidth="3"
+                      >
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     </div>
                   </div>
+
                   <div
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+                    className="flex items-center gap-2 px-3 py-1 rounded-xl text-sm font-medium"
                     style={{
                       background: "#eff6ff",
                       color: "#2563eb",
                       border: "1px solid #bfdbfe",
-                    }}>
+                    }}
+                  >
                     <svg
                       width="14"
                       height="14"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="2">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z" />
                     </svg>
-                    {user.phone}
+
+                    <span>{user.phone || "Contact No."}</span>
                   </div>
                 </div>
 
                 <h2
                   className="text-xl font-bold text-slate-900"
-                  style={{ fontFamily: "var(--font-display)" }}>
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
                   {user.firstName} {user.lastName}
                 </h2>
+
                 <p className="text-slate-500 text-sm mt-0.5">
-                  B.Tech {user.branch} • NIT Raipur • Class of 2025
+                  {graduation.degree || "B.Tech"}{" "}
+                  {graduation.branch || "Computer Science & Engineering"}
+                  {graduation.college ? ` • ${graduation.college}` : ""}
                 </p>
 
                 {user.bio && (
@@ -142,91 +224,103 @@ export default function ProfilePage({ onNav, activePage, user }) {
                 )}
 
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {[
-                    {
-                      label: `CGPA: ${user.cgpa}`,
+                  {/* CGPA */}
+                  <span
+                    className="text-xs font-semibold px-3 py-1 rounded-full"
+                    style={{
+                      background: "#eff6ff",
                       color: "#2563eb",
-                      bg: "#eff6ff",
-                    },
-                    {
-                      label: `10th: ${user.tenthPercent}%`,
+                    }}
+                  >
+                    CGPA: {cgpa > 0 ? cgpa : "Not added"}
+                  </span>
+
+                  {/* 10th Percentage */}
+                  <span
+                    className="text-xs font-semibold px-3 py-1 rounded-full"
+                    style={{
+                      background: "#ecfeff",
                       color: "#0891b2",
-                      bg: "#ecfeff",
-                    },
-                    {
-                      label: `12th: ${user.twelfthPercent}%`,
+                    }}
+                  >
+                    10th:{" "}
+                    {tenthPercentage > 0 ? `${tenthPercentage}%` : "Not added"}
+                  </span>
+
+                  {/* 12th Percentage */}
+                  <span
+                    className="text-xs font-semibold px-3 py-1 rounded-full"
+                    style={{
+                      background: "#f5f3ff",
                       color: "#7c3aed",
-                      bg: "#f5f3ff",
-                    },
-                    {
-                      label: "No Active Backlog",
-                      color: "#059669",
-                      bg: "#ecfdf5",
-                    },
-                  ].map((t) => (
-                    <span
-                      key={t.label}
-                      className="text-xs font-semibold px-3 py-1 rounded-full"
-                      style={{ background: t.bg, color: t.color }}>
-                      {t.label}
-                    </span>
-                  ))}
+                    }}
+                  >
+                    12th:{" "}
+                    {twelfthPercentage > 0
+                      ? `${twelfthPercentage}%`
+                      : "Not added"}
+                  </span>
+
+                  {/* Backlog */}
+                  <span
+                    className="text-xs font-semibold px-3 py-1 rounded-full"
+                    style={{
+                      background: activeBacklogs === 0 ? "#ecfdf5" : "#fef2f2",
+                      color: activeBacklogs === 0 ? "#059669" : "#dc2626",
+                    }}
+                  >
+                    {activeBacklogs === 0
+                      ? "No Active Backlog"
+                      : `${activeBacklogs} Active Backlog${
+                          activeBacklogs > 1 ? "s" : ""
+                        }`}
+                  </span>
                 </div>
 
-                {/* Social links */}
                 {(user.linkedin || user.github || user.portfolio) && (
                   <div className="flex flex-wrap gap-3 mt-4">
                     {user.linkedin && (
                       <a
-                        href={`https://${user.linkedin}`}
+                        href={
+                          user.linkedin.startsWith("http")
+                            ? user.linkedin
+                            : `https://${user.linkedin}`
+                        }
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline">
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="currentColor">
-                          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
-                          <circle cx="4" cy="4" r="2" />
-                        </svg>
-                        {user.linkedin}
+                        className="text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        LinkedIn
                       </a>
                     )}
+
                     {user.github && (
                       <a
-                        href={`https://${user.github}`}
+                        href={
+                          user.github.startsWith("http")
+                            ? user.github
+                            : `https://${user.github}`
+                        }
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:underline">
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="currentColor">
-                          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-                        </svg>
-                        {user.github}
+                        className="text-xs font-medium text-slate-600 hover:underline"
+                      >
+                        GitHub
                       </a>
                     )}
+
                     {user.portfolio && (
                       <a
-                        href={`https://${user.portfolio}`}
+                        href={
+                          user.portfolio.startsWith("http")
+                            ? user.portfolio
+                            : `https://${user.portfolio}`
+                        }
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:underline">
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2">
-                          <circle cx="12" cy="12" r="10" />
-                          <line x1="2" y1="12" x2="22" y2="12" />
-                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                        </svg>
-                        {user.portfolio}
+                        className="text-xs font-medium text-slate-600 hover:underline"
+                      >
+                        Portfolio
                       </a>
                     )}
                   </div>
@@ -235,37 +329,39 @@ export default function ProfilePage({ onNav, activePage, user }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              {/* Left */}
+              {/* LEFT */}
               <div className="space-y-5">
                 {/* Completion */}
                 <div
                   className="bg-white rounded-2xl p-5"
-                  style={{ border: "1px solid #e2e8f0" }}>
+                  style={{ border: "1px solid #e2e8f0" }}
+                >
                   <div className="flex items-center justify-between mb-2">
                     <h3
                       className="text-sm font-semibold text-slate-800"
-                      style={{ fontFamily: "var(--font-display)" }}>
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
                       Profile Completion
                     </h3>
-                    <button
-                      onClick={() => onNav("settings")}
-                      className="text-xs text-blue-600 hover:underline font-medium">
-                      Edit
-                    </button>
                   </div>
+
                   <div className="flex items-center justify-between mb-2">
                     <span
                       className="text-2xl font-bold text-blue-600"
-                      style={{ fontFamily: "var(--font-display)" }}>
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
                       {pct}%
                     </span>
+
                     <span className="text-xs text-slate-400">
                       {doneCount}/{completionItems.length} done
                     </span>
                   </div>
+
                   <div
                     className="h-2 rounded-full mb-4"
-                    style={{ background: "#e2e8f0" }}>
+                    style={{ background: "#e2e8f0" }}
+                  >
                     <div
                       className="h-2 rounded-full transition-all duration-500"
                       style={{
@@ -274,16 +370,19 @@ export default function ProfilePage({ onNav, activePage, user }) {
                       }}
                     />
                   </div>
+
                   <ul className="space-y-1.5">
                     {completionItems.map((item) => (
                       <li
                         key={item.label}
-                        className="flex items-center gap-2 text-xs">
+                        className="flex items-center gap-2 text-xs"
+                      >
                         <div
                           className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
                           style={{
                             background: item.done ? "#dcfce7" : "#f1f5f9",
-                          }}>
+                          }}
+                        >
                           {item.done ? (
                             <svg
                               width="8"
@@ -291,17 +390,20 @@ export default function ProfilePage({ onNav, activePage, user }) {
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="#16a34a"
-                              strokeWidth="3">
+                              strokeWidth="3"
+                            >
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
                           ) : (
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                           )}
                         </div>
+
                         <span
                           className={
                             item.done ? "text-slate-600" : "text-slate-400"
-                          }>
+                          }
+                        >
                           {item.label}
                         </span>
                       </li>
@@ -312,31 +414,30 @@ export default function ProfilePage({ onNav, activePage, user }) {
                 {/* Skills */}
                 <div
                   className="bg-white rounded-2xl p-5"
-                  style={{ border: "1px solid #e2e8f0" }}>
+                  style={{ border: "1px solid #e2e8f0" }}
+                >
                   <div className="flex items-center justify-between mb-3">
                     <h3
                       className="text-sm font-semibold text-slate-800"
-                      style={{ fontFamily: "var(--font-display)" }}>
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
                       Technical Skills
                     </h3>
-                    <button
-                      onClick={() => onNav("settings")}
-                      className="text-xs text-blue-600 hover:underline font-medium">
-                      Edit
-                    </button>
                   </div>
-                  {user.skills.length > 0 ? (
+
+                  {skills.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {user.skills.map((s) => (
+                      {skills.map((skill) => (
                         <span
-                          key={s}
+                          key={skill}
                           className="text-xs font-medium px-2.5 py-1 rounded-lg"
                           style={{
                             background: "#eff6ff",
                             color: "#1d4ed8",
                             border: "1px solid #bfdbfe",
-                          }}>
-                          {s}
+                          }}
+                        >
+                          {skill}
                         </span>
                       ))}
                     </div>
@@ -344,205 +445,402 @@ export default function ProfilePage({ onNav, activePage, user }) {
                     <p className="text-xs text-slate-400">
                       No skills added yet.{" "}
                       <button
-                        onClick={() => onNav("settings")}
-                        className="text-blue-600 hover:underline">
+                        onClick={() => navigate("/settings")}
+                        className="text-blue-600 hover:underline"
+                      >
                         Add skills
                       </button>
                     </p>
                   )}
                 </div>
+                {/* Social Profiles */}
+                <div className="space-y-3">
+                  {/* LinkedIn */}
+                  <div
+                    className="bg-white rounded-2xl p-4"
+                    style={{ border: "1px solid #e2e8f0" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: "#eff6ff",
+                          color: "#2563eb",
+                        }}
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
+                          <rect x="2" y="9" width="4" height="12" />
+                          <circle cx="4" cy="4" r="2" />
+                        </svg>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">
+                          LinkedIn
+                        </p>
+
+                        {user.linkedin ? (
+                          <a
+                            href={
+                              user.linkedin.startsWith("http")
+                                ? user.linkedin
+                                : `https://${user.linkedin}`
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-blue-600 hover:underline truncate block"
+                          >
+                            {user.linkedin}
+                          </a>
+                        ) : (
+                          <p className="text-xs text-slate-400">Not added</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* GitHub */}
+                  <div
+                    className="bg-white rounded-2xl p-4"
+                    style={{ border: "1px solid #e2e8f0" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: "#f1f5f9",
+                          color: "#334155",
+                        }}
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-1.5 6-6a4.6 4.6 0 0 0-1-3.5 4.2 4.2 0 0 0-.1-3.5s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.4 0C6.6 2.2 5.5 2.5 5.5 2.5a4.2 4.2 0 0 0-.1 3.5 4.6 4.6 0 0 0-1 3.5c0 4.5 3 6 6 6a4.8 4.8 0 0 0-1 3.5v4" />
+                          <path d="M9 18c-4.5 2-5-2-7-2" />
+                        </svg>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">
+                          GitHub
+                        </p>
+
+                        {user.github ? (
+                          <a
+                            href={
+                              user.github.startsWith("http")
+                                ? user.github
+                                : `https://${user.github}`
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-slate-600 hover:text-blue-600 hover:underline truncate block"
+                          >
+                            {user.github}
+                          </a>
+                        ) : (
+                          <p className="text-xs text-slate-400">Not added</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Portfolio */}
+                  <div
+                    className="bg-white rounded-2xl p-4"
+                    style={{ border: "1px solid #e2e8f0" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: "#f5f3ff",
+                          color: "#7c3aed",
+                        }}
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M3 12h18" />
+                          <path d="M12 3a14 14 0 0 1 0 18" />
+                          <path d="M12 3a14 14 0 0 0 0 18" />
+                        </svg>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">
+                          Portfolio
+                        </p>
+
+                        {user.portfolio ? (
+                          <a
+                            href={
+                              user.portfolio.startsWith("http")
+                                ? user.portfolio
+                                : `https://${user.portfolio}`
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-purple-600 hover:underline truncate block"
+                          >
+                            {user.portfolio}
+                          </a>
+                        ) : (
+                          <p className="text-xs text-slate-400">Not added</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Right */}
+              {/* RIGHT */}
               <div className="lg:col-span-2 space-y-5">
                 {/* Academic */}
                 <div
                   className="bg-white rounded-2xl p-5"
-                  style={{ border: "1px solid #e2e8f0" }}>
-                  <h3
-                    className="text-sm font-semibold text-slate-800 mb-4"
-                    style={{ fontFamily: "var(--font-display)" }}>
-                    Academic Details
-                  </h3>
+                  style={{ border: "1px solid #e2e8f0" }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3
+                      className="text-sm font-semibold text-slate-800"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      Academic Details
+                    </h3>
+                  </div>
+
                   <div className="space-y-3">
-                    {[
-                      {
-                        label: "B.Tech CSE",
-                        inst: "NIT Raipur",
-                        score: `CGPA: ${user.cgpa} / 10`,
-                        year: "2021–2025",
-                        color: "#1d4ed8",
-                      },
-                      {
-                        label: "Class XII (CBSE)",
-                        inst: "Delhi Public School, Raipur",
-                        score: `${user.twelfthPercent}%`,
-                        year: "2021",
-                        color: "#0891b2",
-                      },
-                      {
-                        label: "Class X (CBSE)",
-                        inst: "Delhi Public School, Raipur",
-                        score: `${user.tenthPercent}%`,
-                        year: "2019",
-                        color: "#7c3aed",
-                      },
-                    ].map((a, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-3.5 rounded-xl"
-                        style={{
-                          background: "#f8fafc",
-                          border: "1px solid #f1f5f9",
-                        }}>
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
-                            style={{ background: a.color }}>
-                            {a.label[0]}
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-slate-800">
-                              {a.label}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {a.inst}
-                            </div>
-                          </div>
+                    {/* Graduation */}
+                    <div
+                      className="flex items-center justify-between p-3.5 rounded-xl"
+                      style={{
+                        background: "#f8fafc",
+                        border: "1px solid #f1f5f9",
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+                          style={{ background: "#1d4ed8" }}
+                        >
+                          B
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-slate-900">
-                            {a.score}
+
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 truncate">
+                            {graduation.degree || "B.Tech"}
                           </div>
-                          <div className="text-xs text-slate-400">{a.year}</div>
+
+                          <div className="text-xs text-slate-500 truncate">
+                            {graduation.branch || "Branch not added"}
+                          </div>
+
+                          {graduation.college && (
+                            <div className="text-xs text-slate-400 truncate mt-0.5">
+                              {graduation.college}
+                            </div>
+                          )}
+
+                          {graduation.university && (
+                            <div className="text-xs text-slate-400 truncate">
+                              {graduation.university}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ))}
+
+                      <div className="text-right ml-4 flex-shrink-0">
+                        {graduation.cgpa > 0 ? (
+                          <div className="text-sm font-bold text-slate-900">
+                            CGPA: {graduation.cgpa} / 10
+                          </div>
+                        ) : (
+                          <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-400">
+                            CGPA not added
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Class XII */}
+                    <div
+                      className="flex items-center justify-between p-3.5 rounded-xl"
+                      style={{
+                        background: "#f8fafc",
+                        border: "1px solid #f1f5f9",
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+                          style={{ background: "#0891b2" }}
+                        >
+                          12
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800">
+                            Class XII
+                            {class12.board ? ` (${class12.board})` : ""}
+                          </div>
+
+                          <div className="text-xs text-slate-500 truncate">
+                            {class12.school || "School not added"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right ml-4 flex-shrink-0">
+                        {class12.percentage > 0 ? (
+                          <div className="text-sm font-bold text-slate-900">
+                            {class12.percentage}%
+                          </div>
+                        ) : (
+                          <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-400">
+                            Percentage not added
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Class X */}
+                    <div
+                      className="flex items-center justify-between p-3.5 rounded-xl"
+                      style={{
+                        background: "#f8fafc",
+                        border: "1px solid #f1f5f9",
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+                          style={{ background: "#7c3aed" }}
+                        >
+                          10
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800">
+                            Class X{class10.board ? ` (${class10.board})` : ""}
+                          </div>
+
+                          <div className="text-xs text-slate-500 truncate">
+                            {class10.school || "School not added"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right ml-4 flex-shrink-0">
+                        {class10.percentage > 0 ? (
+                          <div className="text-sm font-bold text-slate-900">
+                            {class10.percentage}%
+                          </div>
+                        ) : (
+                          <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-400">
+                            Percentage not added
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Projects */}
                 <div
                   className="bg-white rounded-2xl p-5"
-                  style={{ border: "1px solid #e2e8f0" }}>
+                  style={{ border: "1px solid #e2e8f0" }}
+                >
                   <div className="flex items-center justify-between mb-4">
                     <h3
                       className="text-sm font-semibold text-slate-800"
-                      style={{ fontFamily: "var(--font-display)" }}>
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
                       Projects
                     </h3>
-                    <span className="text-xs text-blue-600 cursor-pointer hover:underline">
-                      + Add Project
-                    </span>
                   </div>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        name: "Online Exam Proctoring System",
-                        tech: "React, Node.js, WebRTC, MongoDB",
-                        desc: "AI-powered live proctoring with face detection and tab-switch alerts.",
-                      },
-                      {
-                        name: "E-Commerce Recommendation Engine",
-                        tech: "Python, FastAPI, Collaborative Filtering",
-                        desc: "Personalized product recommendations achieving 78% click-through improvement.",
-                      },
-                    ].map((p, i) => (
-                      <div
-                        key={i}
-                        className="p-4 rounded-xl group cursor-pointer transition-all hover:shadow-sm"
-                        style={{
-                          background: "#f8fafc",
-                          border: "1px solid #f1f5f9",
-                        }}>
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-sm font-semibold text-slate-800">
-                            {p.name}
-                          </h4>
-                          <svg
-                            width="13"
-                            height="13"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#94a3b8"
-                            strokeWidth="2"
-                            className="flex-shrink-0 mt-0.5 group-hover:stroke-blue-500 transition-colors">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                            <polyline points="15 3 21 3 21 9" />
-                            <line x1="10" y1="14" x2="21" y2="3" />
-                          </svg>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">{p.desc}</p>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {p.tech.split(", ").map((t) => (
-                            <span
-                              key={t}
-                              className="text-[10px] font-medium px-2 py-0.5 rounded"
-                              style={{
-                                background: "#e0e7ff",
-                                color: "#4338ca",
-                              }}>
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Certifications */}
-                <div
-                  className="bg-white rounded-2xl p-5"
-                  style={{ border: "1px solid #e2e8f0" }}>
-                  <h3
-                    className="text-sm font-semibold text-slate-800 mb-3"
-                    style={{ fontFamily: "var(--font-display)" }}>
-                    Certifications
-                  </h3>
-                  <div className="space-y-2.5">
-                    {certs.map((c) => (
-                      <div
-                        key={c.name}
-                        className="flex items-center gap-3 p-3 rounded-xl"
-                        style={{
-                          background: "#f8fafc",
-                          border: "1px solid #f1f5f9",
-                        }}>
+                  {projects.length > 0 ? (
+                    <div className="space-y-3">
+                      {projects.map((project, index) => (
                         <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: "#fef3c7" }}>
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#d97706"
-                            strokeWidth="2">
-                            <circle cx="12" cy="8" r="6" />
-                            <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-slate-800 truncate">
-                            {c.name}
+                          key={project._id || index}
+                          className="p-4 rounded-xl transition-all hover:shadow-sm"
+                          style={{
+                            background: "#f8fafc",
+                            border: "1px solid #f1f5f9",
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-sm font-semibold text-slate-800">
+                              {project.name}
+                            </h4>
+
+                            {project.link && (
+                              <a
+                                href={
+                                  project.link.startsWith("http")
+                                    ? project.link
+                                    : `https://${project.link}`
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-blue-600 hover:underline"
+                              >
+                                View
+                              </a>
+                            )}
                           </div>
-                          <div className="text-xs text-slate-500">
-                            {c.issuer} • {c.date}
-                          </div>
+
+                          {project.description && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              {project.description}
+                            </p>
+                          )}
+
+                          {project.tech?.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {project.tech.map((tech) => (
+                                <span
+                                  key={tech}
+                                  className="text-[10px] font-medium px-2 py-0.5 rounded"
+                                  style={{
+                                    background: "#e0e7ff",
+                                    color: "#4338ca",
+                                  }}
+                                >
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#10b981"
-                          strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      No projects added yet.
+                    </p>
+                  )}
                 </div>
 
                 {/* Resume */}
@@ -550,35 +848,52 @@ export default function ProfilePage({ onNav, activePage, user }) {
                   className="rounded-2xl p-5"
                   style={{
                     background: resumeUploaded ? "#f0fdf4" : "#f8fafc",
-                    border: `1px dashed ${resumeUploaded ? "#86efac" : "#cbd5e1"}`,
-                  }}>
+                    border: `1px dashed ${
+                      resumeUploaded ? "#86efac" : "#cbd5e1"
+                    }`,
+                  }}
+                >
+                  <input
+                    ref={resumeInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+                    onChange={handleResumeUpload}
+                    className="hidden"
+                  />
                   {resumeUploaded ? (
                     <div className="flex items-center gap-3">
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: "#dcfce7" }}>
+                        style={{ background: "#dcfce7" }}
+                      >
                         <svg
                           width="18"
                           height="18"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="#16a34a"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14 2 14 8 20 8" />
                         </svg>
                       </div>
+
                       <div className="flex-1">
                         <div className="text-sm font-semibold text-green-800">
-                          {user.firstName}_{user.lastName}_Resume.pdf
+                          {user.resumeName ||
+                            `${user.firstName}_${user.lastName}_Resume.pdf`}
                         </div>
+
                         <div className="text-xs text-green-600">
                           Uploaded successfully
                         </div>
                       </div>
+
                       <button
-                        onClick={() => setResumeUploaded(false)}
-                        className="text-xs text-slate-400 hover:text-red-500 transition-colors">
+                        onClick={handleResumeDelete}
+                        className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                      >
                         Remove
                       </button>
                     </div>
@@ -591,26 +906,37 @@ export default function ProfilePage({ onNav, activePage, user }) {
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="#94a3b8"
-                        strokeWidth="1.5">
+                        strokeWidth="1.5"
+                      >
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" y1="3" x2="12" y2="15" />
                       </svg>
+
                       <p className="text-sm font-medium text-slate-600 mb-1">
                         Upload Resume
                       </p>
+
                       <p className="text-xs text-slate-400 mb-3">
                         PDF or DOCX, max 5MB
                       </p>
+
                       <button
-                        onClick={() => setResumeUploaded(true)}
+                        onClick={() => resumeInputRef.current?.click()}
+                        disabled={resumeUploading}
                         className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90"
                         style={{
                           background:
                             "linear-gradient(135deg, #1d4ed8, #3b82f6)",
-                        }}>
-                        Browse Files
+                        }}
+                      >
+                        {resumeUploading ? "Uploading..." : "Browse Files"}
                       </button>
+                      {resumeError && (
+                        <p className="text-xs text-red-600 mt-3">
+                          {resumeError}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
