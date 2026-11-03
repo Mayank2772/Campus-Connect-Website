@@ -1,162 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  createDrive,
+  deleteDrive as deleteDriveRequest,
+  getDrives,
+  updateDrive,
+} from "../api/drives";
 
-const initialDrives = [
-  {
-    id: 1,
-    company: "Google",
-    role: "Software Engineer (SDE-1)",
-    type: "Dream",
-    ctc: "32",
-    ctcRange: "32-42",
-    location: "Bangalore",
-    mode: "On-Campus",
-    openings: 12,
-    cgpa: 7.5,
-    backlog: false,
-    deadline: "2025-08-05",
-    status: "Closed",
-    applied: 148,
-    branches: ["CSE", "ECE", "IT", "EEE"],
-    description:
-      "Google is looking for passionate software engineers who build products used by billions.",
-  },
-  {
-    id: 2,
-    company: "Microsoft",
-    role: "Software Development Engineer",
-    type: "Dream",
-    ctc: "28",
-    ctcRange: "28-38",
-    location: "Hyderabad",
-    mode: "On-Campus",
-    openings: 8,
-    cgpa: 7.0,
-    backlog: false,
-    deadline: "2025-08-12",
-    status: "Closed",
-    applied: 132,
-    branches: ["CSE", "ECE", "IT"],
-    description:
-      "Join Microsoft to build products that empower billions of people worldwide.",
-  },
-  {
-    id: 3,
-    company: "Amazon",
-    role: "SDE-1",
-    type: "Dream",
-    ctc: "26",
-    ctcRange: "26-35",
-    location: "Hyderabad / Bangalore",
-    mode: "On-Campus",
-    openings: 10,
-    cgpa: 7.0,
-    backlog: false,
-    deadline: "2025-09-10",
-    status: "Active",
-    applied: 95,
-    branches: ["CSE", "ECE", "IT", "EEE"],
-    description:
-      "Amazon SDE role focused on building scalable distributed systems.",
-  },
-  {
-    id: 4,
-    company: "Infosys",
-    role: "Systems Engineer",
-    type: "Mass",
-    ctc: "4.5",
-    ctcRange: "4.5-6",
-    location: "Pune / Bangalore / Chennai",
-    mode: "On-Campus",
-    openings: 60,
-    cgpa: 6.0,
-    backlog: true,
-    deadline: "2025-09-18",
-    status: "Active",
-    applied: 420,
-    branches: ["CSE", "ECE", "IT", "EEE", "ME", "CE"],
-    description: "Infosys Systems Engineer role for fresh graduates.",
-  },
-  {
-    id: 5,
-    company: "Wipro",
-    role: "Project Engineer",
-    type: "Mass",
-    ctc: "3.5",
-    ctcRange: "3.5-5",
-    location: "Pan India",
-    mode: "On-Campus",
-    openings: 50,
-    cgpa: 6.0,
-    backlog: true,
-    deadline: "2025-09-20",
-    status: "Active",
-    applied: 380,
-    branches: ["CSE", "ECE", "IT", "EEE", "ME"],
-    description:
-      "Wipro Project Engineer role across multiple technology domains.",
-  },
-  {
-    id: 6,
-    company: "Adobe",
-    role: "Computer Scientist",
-    type: "Super Dream",
-    ctc: "42",
-    ctcRange: "42-55",
-    location: "Bangalore / Noida",
-    mode: "On-Campus",
-    openings: 5,
-    cgpa: 8.0,
-    backlog: false,
-    deadline: "2025-10-01",
-    status: "Active",
-    applied: 62,
-    branches: ["CSE", "IT"],
-    description:
-      "Adobe seeks exceptional engineers for creative cloud products.",
-  },
-  {
-    id: 7,
-    company: "Deloitte",
-    role: "Analyst",
-    type: "Mass",
-    ctc: "7",
-    ctcRange: "7-9",
-    location: "Mumbai / Delhi / Hyderabad",
-    mode: "On-Campus",
-    openings: 30,
-    cgpa: 6.5,
-    backlog: true,
-    deadline: "2025-10-05",
-    status: "Active",
-    applied: 210,
-    branches: ["CSE", "ECE", "IT", "ME", "CE"],
-    description: "Deloitte Analyst program for technology consulting.",
-  },
-  {
-    id: 8,
-    company: "Flipkart",
-    role: "SDE-1",
-    type: "Dream",
-    ctc: "24",
-    ctcRange: "24-30",
-    location: "Bangalore",
-    mode: "On-Campus",
-    openings: 8,
-    cgpa: 7.5,
-    backlog: false,
-    deadline: "2025-10-12",
-    status: "Active",
-    applied: 88,
-    branches: ["CSE", "ECE", "IT"],
-    description:
-      "Flipkart SDE-1 role building India's largest e-commerce platform.",
-  },
-];
+const getDriveId = (drive) => drive?._id ?? drive?.id;
 
 const typeStyle = {
-  Dream: { bg: "#ede9fe", text: "#6c63ff" },
-  Mass: { bg: "#fef3c7", text: "#d97706" },
-  "Super Dream": { bg: "#dbeafe", text: "#4f7ef7" },
+  "Full-Time": { bg: "#dbeafe", text: "#1d4ed8" },
+  Internship: { bg: "#fef3c7", text: "#b45309" },
+  PPO: { bg: "#ede9fe", text: "#7c3aed" },
 };
 
 const statusStyle = {
@@ -167,7 +22,7 @@ const statusStyle = {
 const EMPTY = {
   company: "",
   role: "",
-  type: "Dream",
+  type: "Full-Time",
   ctc: "",
   ctcRange: "",
   location: "",
@@ -180,6 +35,19 @@ const EMPTY = {
   branches: ["CSE"],
   description: "",
 };
+
+function formatDeadline(value) {
+  if (!value) return "-";
+  const datePart = String(value).slice(0, 10);
+  const [year, month, day] = datePart.split("-").map(Number);
+  if (!year || !month || !day) return value;
+
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function Avatar({ name, size = 36 }) {
   const initials = name ? name.slice(0, 2).toUpperCase() : "??";
@@ -196,43 +64,60 @@ function Avatar({ name, size = 36 }) {
   return (
     <div
       className="flex items-center justify-center rounded-xl text-white text-sm font-bold shrink-0"
-      style={{ width: size, height: size, background: color }}>
+      style={{ width: size, height: size, background: color }}
+    >
       {initials}
     </div>
   );
 }
 
-function Modal({ title, onClose, children }) {
+function Modal({ title, onClose, error, children }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}>
+      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+    >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto"
-        style={{ maxWidth: 620 }}>
+        style={{ maxWidth: 620 }}
+      >
         <div
           className="flex items-center justify-between px-6 py-4 border-b"
-          style={{ borderColor: "#f1f5f9" }}>
+          style={{ borderColor: "#f1f5f9" }}
+        >
           <h2 className="font-semibold text-base" style={{ color: "#0f172a" }}>
             {title}
           </h2>
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 hover:bg-gray-100 transition-colors"
-            style={{ color: "#64748b" }}>
+            style={{ color: "#64748b" }}
+          >
             <svg
               width="18"
               height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2">
+              strokeWidth="2"
+            >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-6 py-5">
+          {error && (
+            <div
+              className="mb-4 rounded-xl px-4 py-3 text-sm"
+              style={{ backgroundColor: "#fee2e2", color: "#b91c1c" }}
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -254,7 +139,8 @@ function DriveForm({ initial, onSave, onCancel }) {
     <div>
       <label
         className="block text-xs font-semibold mb-1.5"
-        style={{ color: "#475569" }}>
+        style={{ color: "#475569" }}
+      >
         {label}
       </label>
       <input
@@ -280,30 +166,34 @@ function DriveForm({ initial, onSave, onCancel }) {
         <div>
           <label
             className="block text-xs font-semibold mb-1.5"
-            style={{ color: "#475569" }}>
+            style={{ color: "#475569" }}
+          >
             Drive Type
           </label>
           <select
             value={form.type}
             onChange={(e) => set("type", e.target.value)}
             className="w-full rounded-xl px-3.5 py-2.5 text-sm border outline-none"
-            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}>
-            <option>Dream</option>
-            <option>Super Dream</option>
-            <option>Mass</option>
+            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}
+          >
+            <option>Full-Time</option>
+            <option>Internship</option>
+            <option>PPO</option>
           </select>
         </div>
         <div>
           <label
             className="block text-xs font-semibold mb-1.5"
-            style={{ color: "#475569" }}>
+            style={{ color: "#475569" }}
+          >
             Status
           </label>
           <select
             value={form.status}
             onChange={(e) => set("status", e.target.value)}
             className="w-full rounded-xl px-3.5 py-2.5 text-sm border outline-none"
-            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}>
+            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}
+          >
             <option>Active</option>
             <option>Closed</option>
           </select>
@@ -311,14 +201,16 @@ function DriveForm({ initial, onSave, onCancel }) {
         <div>
           <label
             className="block text-xs font-semibold mb-1.5"
-            style={{ color: "#475569" }}>
+            style={{ color: "#475569" }}
+          >
             Mode
           </label>
           <select
             value={form.mode}
             onChange={(e) => set("mode", e.target.value)}
             className="w-full rounded-xl px-3.5 py-2.5 text-sm border outline-none"
-            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}>
+            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}
+          >
             <option>On-Campus</option>
             <option>Off-Campus</option>
             <option>Virtual</option>
@@ -340,7 +232,8 @@ function DriveForm({ initial, onSave, onCancel }) {
       <div>
         <label
           className="block text-xs font-semibold mb-2"
-          style={{ color: "#475569" }}>
+          style={{ color: "#475569" }}
+        >
           Eligible Branches
         </label>
         <div className="flex flex-wrap gap-2">
@@ -355,7 +248,8 @@ function DriveForm({ initial, onSave, onCancel }) {
                   ? "#4f7ef7"
                   : "#f1f5f9",
                 color: form.branches.includes(b) ? "#fff" : "#64748b",
-              }}>
+              }}
+            >
               {b}
             </button>
           ))}
@@ -377,7 +271,8 @@ function DriveForm({ initial, onSave, onCancel }) {
       <div>
         <label
           className="block text-xs font-semibold mb-1.5"
-          style={{ color: "#475569" }}>
+          style={{ color: "#475569" }}
+        >
           Job Description
         </label>
         <textarea
@@ -395,13 +290,15 @@ function DriveForm({ initial, onSave, onCancel }) {
         <button
           onClick={onCancel}
           className="flex-1 rounded-xl py-2.5 text-sm font-semibold border transition-all"
-          style={{ borderColor: "#e2e8f0", color: "#64748b" }}>
+          style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+        >
           Cancel
         </button>
         <button
           onClick={() => onSave(form)}
           className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white transition-all"
-          style={{ backgroundColor: "#4f7ef7" }}>
+          style={{ backgroundColor: "#4f7ef7" }}
+        >
           Save Drive
         </button>
       </div>
@@ -414,7 +311,8 @@ function DeleteConfirm({ drive, onConfirm, onCancel }) {
     <div className="flex flex-col items-center gap-4 py-2">
       <div
         className="rounded-full flex items-center justify-center"
-        style={{ width: 56, height: 56, backgroundColor: "#fee2e2" }}>
+        style={{ width: 56, height: 56, backgroundColor: "#fee2e2" }}
+      >
         <svg
           width="24"
           height="24"
@@ -423,7 +321,8 @@ function DeleteConfirm({ drive, onConfirm, onCancel }) {
           stroke="#ef4444"
           strokeWidth="2"
           strokeLinecap="round"
-          strokeLinejoin="round">
+          strokeLinejoin="round"
+        >
           <polyline points="3 6 5 6 21 6" />
           <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
           <path d="M10 11v6" />
@@ -447,13 +346,15 @@ function DeleteConfirm({ drive, onConfirm, onCancel }) {
         <button
           onClick={onCancel}
           className="flex-1 rounded-xl py-2.5 text-sm font-semibold border"
-          style={{ borderColor: "#e2e8f0", color: "#64748b" }}>
+          style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+        >
           Cancel
         </button>
         <button
           onClick={onConfirm}
           className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white"
-          style={{ backgroundColor: "#ef4444" }}>
+          style={{ backgroundColor: "#ef4444" }}
+        >
           Delete
         </button>
       </div>
@@ -462,12 +363,22 @@ function DeleteConfirm({ drive, onConfirm, onCancel }) {
 }
 
 export default function PlacementDrives() {
-  const [drives, setDrives] = useState(initialDrives);
+  const [drives, setDrives] = useState([]);
+  const [pageError, setPageError] = useState("");
+  const [saveError, setSaveError] = useState("");
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("All");
-  const [filterStatus, setFilterStatus] = useState("All");
+  const [activeFilter, setActiveFilter] = useState("All");
   const [modal, setModal] = useState(null); // { type: "add"|"edit"|"delete"|"view", drive }
-  const [nextId, setNextId] = useState(100);
+  useEffect(() => {
+    getDrives()
+      .then(setDrives)
+      .catch((error) => setPageError(error.message));
+  }, []);
+
+  const closeModal = () => {
+    setModal(null);
+    setSaveError("");
+  };
 
   const filtered = drives.filter((d) => {
     const matchSearch =
@@ -475,30 +386,97 @@ export default function PlacementDrives() {
       d.company.toLowerCase().includes(search.toLowerCase()) ||
       d.role.toLowerCase().includes(search.toLowerCase()) ||
       d.location.toLowerCase().includes(search.toLowerCase());
-    const matchType = filterType === "All" || d.type === filterType;
-    const matchStatus = filterStatus === "All" || d.status === filterStatus;
-    return matchSearch && matchType && matchStatus;
+    const matchesFilter =
+      activeFilter === "All" ||
+      d.type === activeFilter ||
+      d.status === activeFilter;
+    return matchSearch && matchesFilter;
   });
 
-  const handleSave = (form) => {
+  const handleSave = async (form) => {
     if (!modal) return;
+    setSaveError("");
 
-    if (modal.type === "add") {
-      setDrives((prev) => [...prev, { ...form, id: nextId, applied: 0 }]);
-      setNextId((n) => n + 1);
-    } else {
-      setDrives((prev) =>
-        prev.map((d) => (d.id === modal.drive.id ? { ...d, ...form } : d)),
-      );
+    const normalizedCompany = String(form.company || "").trim().toLowerCase();
+    const editingDriveId = modal.type === "edit" ? getDriveId(modal.drive) : null;
+    const duplicateCompany = drives.some(
+      (drive) =>
+        getDriveId(drive) !== editingDriveId &&
+        String(drive.company || "").trim().toLowerCase() === normalizedCompany,
+    );
+    if (duplicateCompany) {
+      setSaveError("A placement drive for this company already exists.");
+      return;
     }
-    setModal(null);
+
+    const requiredFields = [
+      ["company", "Company name"],
+      ["role", "Job role"],
+      ["location", "Location"],
+      ["ctc", "CTC"],
+      ["deadline", "Application deadline"],
+    ];
+    const missingField = requiredFields.find(
+      ([key]) => !String(form[key] ?? "").trim(),
+    );
+
+    if (missingField) {
+      setSaveError(`${missingField[1]} is required.`);
+      return;
+    }
+
+    const payload = {
+      ...form,
+      openings: form.openings === "" ? 1 : Number(form.openings),
+      cgpa: form.cgpa === "" ? 0 : Number(form.cgpa),
+      branches: form.branches.filter(Boolean),
+    };
+
+    if (
+      !Number.isFinite(payload.openings) ||
+      payload.openings < 1 ||
+      !Number.isFinite(payload.cgpa) ||
+      payload.cgpa < 0 ||
+      payload.cgpa > 10
+    ) {
+      setSaveError("Openings must be at least 1 and CGPA must be between 0 and 10.");
+      return;
+    }
+
+    try {
+      if (modal.type === "add") {
+        const response = await createDrive({ ...payload, applied: 0 });
+        setDrives((prev) => [...prev, response.drive]);
+      } else {
+        const driveId = getDriveId(modal.drive);
+        const response = await updateDrive(
+          driveId,
+          payload,
+        );
+        setDrives((prev) =>
+          prev.map((d) =>
+            getDriveId(d) === driveId
+              ? response.drive
+              : d,
+          ),
+        );
+      }
+      closeModal();
+    } catch (error) {
+      setSaveError(error.message);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!modal?.drive) return;
-
-    setDrives((prev) => prev.filter((d) => d.id !== modal.drive.id));
-    setModal(null);
+    const driveId = getDriveId(modal.drive);
+    try {
+      await deleteDriveRequest(driveId);
+      setDrives((prev) => prev.filter((d) => getDriveId(d) !== driveId));
+      closeModal();
+    } catch (error) {
+      setSaveError(error.message);
+    }
   };
 
   const stats = [
@@ -523,8 +501,17 @@ export default function PlacementDrives() {
   return (
     <div
       className="flex flex-col gap-5 p-6 overflow-y-auto h-full"
-      style={{ backgroundColor: "#f0f4fb" }}>
+      style={{ backgroundColor: "#f0f4fb" }}
+    >
       {/* Header */}
+      {pageError && !modal && (
+        <div
+          className="rounded-xl px-4 py-3 text-sm"
+          style={{ backgroundColor: "#fee2e2", color: "#b91c1c" }}
+        >
+          {pageError}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#0f172a" }}>
@@ -535,16 +522,21 @@ export default function PlacementDrives() {
           </p>
         </div>
         <button
-          onClick={() => setModal({ type: "add", drive: EMPTY })}
+          onClick={() => {
+            setSaveError("");
+            setModal({ type: "add", drive: EMPTY });
+          }}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-          style={{ backgroundColor: "#4f7ef7" }}>
+          style={{ backgroundColor: "#4f7ef7" }}
+        >
           <svg
             width="16"
             height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5">
+            strokeWidth="2.5"
+          >
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -558,7 +550,8 @@ export default function PlacementDrives() {
           <div
             key={s.label}
             className="bg-white rounded-2xl px-5 py-4 flex items-center gap-4"
-            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+          >
             <div className="text-2xl font-bold" style={{ color: s.color }}>
               {s.value}
             </div>
@@ -572,17 +565,20 @@ export default function PlacementDrives() {
       {/* Filters */}
       <div
         className="bg-white rounded-2xl px-5 py-4 flex items-center gap-3"
-        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+      >
         <div
           className="flex items-center gap-2 flex-1 rounded-xl px-3 py-2.5 border"
-          style={{ borderColor: "#e2e8f0" }}>
+          style={{ borderColor: "#e2e8f0" }}
+        >
           <svg
             width="15"
             height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#94a3b8"
-            strokeWidth="2">
+            strokeWidth="2"
+          >
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -595,39 +591,30 @@ export default function PlacementDrives() {
           />
         </div>
         <div className="flex gap-2">
-          {["All", "Dream", "Super Dream", "Mass"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setFilterType(t)}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{
-                backgroundColor: filterType === t ? "#4f7ef7" : "#f1f5f9",
-                color: filterType === t ? "#fff" : "#64748b",
-              }}>
-              {t}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          {["All", "Active", "Closed"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{
-                backgroundColor: filterStatus === s ? "#1a2340" : "#f1f5f9",
-                color: filterStatus === s ? "#fff" : "#64748b",
-              }}>
-              {s}
-            </button>
-          ))}
+          {["All", "Full-Time", "Internship", "PPO", "Active", "Closed"].map(
+            (filter) => (
+              <button
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor:
+                    activeFilter === filter ? "#4f7ef7" : "#f1f5f9",
+                  color: activeFilter === filter ? "#fff" : "#64748b",
+                }}
+              >
+                {filter}
+              </button>
+            ),
+          )}
         </div>
       </div>
 
       {/* Table */}
       <div
         className="bg-white rounded-2xl overflow-hidden"
-        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+      >
         <div className="px-5 py-3 border-b" style={{ borderColor: "#f1f5f9" }}>
           <span className="text-sm font-medium" style={{ color: "#64748b" }}>
             {filtered.length} drives found
@@ -652,7 +639,8 @@ export default function PlacementDrives() {
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-xs font-semibold"
-                    style={{ color: "#64748b" }}>
+                    style={{ color: "#64748b" }}
+                  >
                     {h}
                   </th>
                 ))}
@@ -667,7 +655,8 @@ export default function PlacementDrives() {
                       <div>
                         <div
                           className="text-sm font-semibold"
-                          style={{ color: "#0f172a" }}>
+                          style={{ color: "#0f172a" }}
+                        >
                           {d.company}
                         </div>
                         <div className="text-xs" style={{ color: "#94a3b8" }}>
@@ -689,36 +678,43 @@ export default function PlacementDrives() {
                       className="text-xs font-semibold px-2.5 py-1 rounded-full"
                       style={{
                         backgroundColor: (
-                          typeStyle[d.type] || typeStyle["Mass"]
+                          typeStyle[d.type] || typeStyle["Full-Time"]
                         ).bg,
-                        color: (typeStyle[d.type] || typeStyle["Mass"]).text,
-                      }}>
+                        color: (typeStyle[d.type] || typeStyle["Full-Time"])
+                          .text,
+                      }}
+                    >
                       {d.type}
                     </span>
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-semibold"
-                    style={{ color: "#4f7ef7" }}>
+                    style={{ color: "#4f7ef7" }}
+                  >
                     ₹{d.ctc} LPA
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    style={{ color: "#334155" }}>
+                    style={{ color: "#334155" }}
+                  >
                     {d.openings} seats
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    style={{ color: "#334155" }}>
+                    style={{ color: "#334155" }}
+                  >
                     ≥ {d.cgpa}
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    style={{ color: "#334155" }}>
-                    {d.deadline}
+                    style={{ color: "#334155" }}
+                  >
+                    {formatDeadline(d.deadline)}
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-medium"
-                    style={{ color: "#334155" }}>
+                    style={{ color: "#334155" }}
+                  >
                     {d.applied}
                   </td>
                   <td className="px-4 py-3">
@@ -727,7 +723,8 @@ export default function PlacementDrives() {
                       style={{
                         backgroundColor: statusStyle[d.status].bg,
                         color: statusStyle[d.status].text,
-                      }}>
+                      }}
+                    >
                       {d.status}
                     </span>
                   </td>
@@ -737,14 +734,16 @@ export default function PlacementDrives() {
                         onClick={() => setModal({ type: "view", drive: d })}
                         title="View"
                         className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
-                        style={{ color: "#4f7ef7" }}>
+                        style={{ color: "#4f7ef7" }}
+                      >
                         <svg
                           width="15"
                           height="15"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
                           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                           <circle cx="12" cy="12" r="3" />
                         </svg>
@@ -753,14 +752,16 @@ export default function PlacementDrives() {
                         onClick={() => setModal({ type: "edit", drive: d })}
                         title="Edit"
                         className="p-1.5 rounded-lg hover:bg-yellow-50 transition-colors"
-                        style={{ color: "#f59e0b" }}>
+                        style={{ color: "#f59e0b" }}
+                      >
                         <svg
                           width="15"
                           height="15"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
@@ -769,14 +770,16 @@ export default function PlacementDrives() {
                         onClick={() => setModal({ type: "delete", drive: d })}
                         title="Delete"
                         className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                        style={{ color: "#ef4444" }}>
+                        style={{ color: "#ef4444" }}
+                      >
                         <svg
                           width="15"
                           height="15"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
                           <polyline points="3 6 5 6 21 6" />
                           <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                           <path d="M10 11v6" />
@@ -792,7 +795,8 @@ export default function PlacementDrives() {
                   <td
                     colSpan={10}
                     className="px-4 py-16 text-center text-sm"
-                    style={{ color: "#94a3b8" }}>
+                    style={{ color: "#94a3b8" }}
+                  >
                     No drives found matching your filters.
                   </td>
                 </tr>
@@ -804,55 +808,71 @@ export default function PlacementDrives() {
 
       {/* Modals */}
       {modal?.type === "add" && (
-        <Modal title="Add New Placement Drive" onClose={() => setModal(null)}>
+        <Modal
+          title="Add New Placement Drive"
+          error={saveError}
+          onClose={closeModal}
+        >
           <DriveForm
             initial={EMPTY}
             onSave={handleSave}
-            onCancel={() => setModal(null)}
+            onCancel={closeModal}
           />
         </Modal>
       )}
       {modal?.type === "edit" && modal.drive && (
-        <Modal title="Edit Placement Drive" onClose={() => setModal(null)}>
+        <Modal
+          title="Edit Placement Drive"
+          error={saveError}
+          onClose={closeModal}
+        >
           <DriveForm
             initial={modal.drive}
             onSave={handleSave}
-            onCancel={() => setModal(null)}
+            onCancel={closeModal}
           />
         </Modal>
       )}
       {modal?.type === "delete" && modal.drive && (
-        <Modal title="Confirm Delete" onClose={() => setModal(null)}>
+        <Modal
+          title="Confirm Delete"
+          error={saveError}
+          onClose={closeModal}
+        >
           <DeleteConfirm
             drive={modal.drive}
             onConfirm={handleDelete}
-            onCancel={() => setModal(null)}
+            onCancel={closeModal}
           />
         </Modal>
       )}
       {modal?.type === "view" && modal.drive && (
-        <Modal title="Drive Details" onClose={() => setModal(null)}>
+        <Modal title="Drive Details" onClose={closeModal}>
           <div className="flex flex-col gap-4">
             <div
               className="flex items-start gap-4 pb-4 border-b"
-              style={{ borderColor: "#f1f5f9" }}>
+              style={{ borderColor: "#f1f5f9" }}
+            >
               <Avatar name={modal.drive.company} size={48} />
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span
                     className="font-bold text-lg"
-                    style={{ color: "#0f172a" }}>
+                    style={{ color: "#0f172a" }}
+                  >
                     {modal.drive.company}
                   </span>
                   <span
                     className="text-xs font-semibold px-2 py-0.5 rounded-full"
                     style={{
                       backgroundColor: (
-                        typeStyle[modal.drive.type] || typeStyle["Mass"]
+                        typeStyle[modal.drive.type] || typeStyle["Full-Time"]
                       ).bg,
-                      color: (typeStyle[modal.drive.type] || typeStyle["Mass"])
-                        .text,
-                    }}>
+                      color: (
+                        typeStyle[modal.drive.type] || typeStyle["Full-Time"]
+                      ).text,
+                    }}
+                  >
                     {modal.drive.type}
                   </span>
                   <span
@@ -860,7 +880,8 @@ export default function PlacementDrives() {
                     style={{
                       backgroundColor: statusStyle[modal.drive.status].bg,
                       color: statusStyle[modal.drive.status].text,
-                    }}>
+                    }}
+                  >
                     {modal.drive.status}
                   </span>
                 </div>
@@ -889,7 +910,10 @@ export default function PlacementDrives() {
                   label: "Active Backlog",
                   value: modal.drive.backlog ? "Allowed" : "Not Allowed",
                 },
-                { label: "Deadline", value: modal.drive.deadline },
+                {
+                  label: "Deadline",
+                  value: formatDeadline(modal.drive.deadline),
+                },
                 {
                   label: "Eligible Branches",
                   value: modal.drive.branches?.join(", ") || "—",
@@ -898,13 +922,15 @@ export default function PlacementDrives() {
                 <div
                   key={item.label}
                   className="rounded-xl p-3"
-                  style={{ backgroundColor: "#f8fafc" }}>
+                  style={{ backgroundColor: "#f8fafc" }}
+                >
                   <div className="text-xs" style={{ color: "#94a3b8" }}>
                     {item.label}
                   </div>
                   <div
                     className="text-sm font-semibold mt-0.5"
-                    style={{ color: "#0f172a" }}>
+                    style={{ color: "#0f172a" }}
+                  >
                     {item.value}
                   </div>
                 </div>
@@ -914,12 +940,14 @@ export default function PlacementDrives() {
               <div>
                 <div
                   className="text-xs font-semibold mb-1.5"
-                  style={{ color: "#475569" }}>
+                  style={{ color: "#475569" }}
+                >
                   Job Description
                 </div>
                 <div
                   className="text-sm leading-relaxed"
-                  style={{ color: "#334155" }}>
+                  style={{ color: "#334155" }}
+                >
                   {modal.drive.description}
                 </div>
               </div>
@@ -928,13 +956,15 @@ export default function PlacementDrives() {
               <button
                 onClick={() => setModal({ type: "edit", drive: modal.drive })}
                 className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white"
-                style={{ backgroundColor: "#4f7ef7" }}>
+                style={{ backgroundColor: "#4f7ef7" }}
+              >
                 Edit Drive
               </button>
               <button
-                onClick={() => setModal(null)}
+                onClick={closeModal}
                 className="flex-1 rounded-xl py-2.5 text-sm font-semibold border"
-                style={{ borderColor: "#e2e8f0", color: "#64748b" }}>
+                style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+              >
                 Close
               </button>
             </div>

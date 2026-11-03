@@ -1,148 +1,617 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  downloadApplicationsExport,
+  getApplications,
+  updateApplicationStatus,
+} from "../api/applications";
+import { fetchStudentResume } from "../api/students";
 
-const initialApps = [
-  { id: 1, name: "Arjun Mehta", roll: "CSE/2025/042", branch: "CSE", cgpa: 8.9, company: "Google", role: "Software Engineer (SDE-1)", appliedOn: "2025-07-15", status: "Shortlisted" },
-  { id: 2, name: "Priya Sharma", roll: "ECE/2025/017", branch: "ECE", cgpa: 8.2, company: "Microsoft", role: "Software Development Engineer", appliedOn: "2025-07-18", status: "Applied" },
-  { id: 3, name: "Rohit Gupta", roll: "CSE/2025/088", branch: "CSE", cgpa: 7.6, company: "Amazon", role: "SDE-1", appliedOn: "2025-07-20", status: "On Hold" },
-  { id: 4, name: "Anjali Singh", roll: "IT/2025/031", branch: "IT", cgpa: 7.1, company: "Infosys", role: "Systems Engineer", appliedOn: "2025-07-22", status: "Rejected" },
-  { id: 5, name: "Vikram Nair", roll: "CSE/2025/064", branch: "CSE", cgpa: 9.1, company: "Google", role: "Software Engineer (SDE-1)", appliedOn: "2025-07-15", status: "Offer" },
-  { id: 6, name: "Sneha Patel", roll: "CSE/2025/011", branch: "CSE", cgpa: 8.5, company: "Adobe", role: "Computer Scientist", appliedOn: "2025-07-25", status: "Shortlisted" },
-  { id: 7, name: "Karan Verma", roll: "ECE/2025/055", branch: "ECE", cgpa: 7.8, company: "Wipro", role: "Project Engineer", appliedOn: "2025-07-28", status: "Applied" },
-  { id: 8, name: "Meera Iyer", roll: "CSE/2025/022", branch: "CSE", cgpa: 8.7, company: "Flipkart", role: "SDE-1", appliedOn: "2025-08-01", status: "Shortlisted" },
-  { id: 9, name: "Aditya Kumar", roll: "IT/2025/044", branch: "IT", cgpa: 7.3, company: "Deloitte", role: "Analyst", appliedOn: "2025-08-03", status: "Offer" },
-  { id: 10, name: "Pooja Reddy", roll: "CSE/2025/077", branch: "CSE", cgpa: 9.3, company: "Microsoft", role: "Software Development Engineer", appliedOn: "2025-07-18", status: "Offer" },
-  { id: 11, name: "Rahul Joshi", roll: "CSE/2025/033", branch: "CSE", cgpa: 7.9, company: "Amazon", role: "SDE-1", appliedOn: "2025-07-20", status: "Applied" },
-  { id: 12, name: "Divya Nair", roll: "EEE/2025/009", branch: "EEE", cgpa: 7.0, company: "Infosys", role: "Systems Engineer", appliedOn: "2025-07-22", status: "Rejected" },
+const statuses = [
+  "Applied",
+  "Shortlisted",
+  "Interview",
+  "On Hold",
+  "Rejected",
+  "Offer",
 ];
-
 const statusConfig = {
-  Applied:     { bg: "#dbeafe", text: "#2563eb" },
+  Applied: { bg: "#dbeafe", text: "#2563eb" },
   Shortlisted: { bg: "#d1fae5", text: "#059669" },
-  "On Hold":   { bg: "#fef3c7", text: "#d97706" },
-  Rejected:    { bg: "#fee2e2", text: "#dc2626" },
-  Offer:       { bg: "#ede9fe", text: "#6c63ff" },
+  "On Hold": { bg: "#fef3c7", text: "#d97706" },
+  Rejected: { bg: "#fee2e2", text: "#dc2626" },
+  Offer: { bg: "#ede9fe", text: "#6c63ff" },
+  Interview: { bg: "#cffafe", text: "#0891b2" },
 };
 
-const tabs = ["All", "Applied", "Shortlisted", "On Hold", "Rejected", "Offer"];
-
-function Avatar({ name }) {
-  const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-  const colors = ["#4f7ef7", "#6c63ff", "#10b981", "#f59e0b", "#ec4899", "#ef4444", "#14b8a6"];
-  const color = colors[name.charCodeAt(0) % colors.length];
+function studentName(application) {
+  const student = application.student;
+  if (!student) return "Unknown student";
   return (
-    <div className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
-      style={{ width: 34, height: 34, background: color }}>{initials}</div>
+    `${student.firstName || ""} ${student.lastName || ""}`.trim() ||
+    student.userId?.name ||
+    "Unknown student"
+  );
+}
+
+function Avatar({ name, size = 40 }) {
+  const initials = name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <div
+      className="flex items-center justify-center rounded-xl text-white text-sm font-bold shrink-0"
+      style={{
+        width: size,
+        height: size,
+        background: "linear-gradient(135deg, #4f7ef7, #6c63ff)",
+      }}
+    >
+      {initials || "?"}
+    </div>
+  );
+}
+
+function CompanyAvatar({ company }) {
+  return (
+    <div
+      className="flex items-center justify-center rounded-2xl text-white text-xl font-bold shrink-0"
+      style={{
+        width: 56,
+        height: 56,
+        background: "linear-gradient(135deg, #4f7ef7, #6c63ff)",
+      }}
+    >
+      {company.slice(0, 2).toUpperCase()}
+    </div>
   );
 }
 
 export default function Applications() {
-  const [apps, setApps] = useState(initialApps);
-  const [tab, setTab] = useState("All");
+  const [applications, setApplications] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filtered = apps.filter(a => {
-    const matchTab = tab === "All" || a.status === tab;
-    const matchSearch = !search ||
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.company.toLowerCase().includes(search.toLowerCase()) ||
-      a.roll.toLowerCase().includes(search.toLowerCase());
-    return matchTab && matchSearch;
-  });
+  useEffect(() => {
+    getApplications()
+      .then((applicationData) =>
+        setApplications(
+          Array.isArray(applicationData)
+            ? applicationData.filter(
+                (application) => application.student && application.drive,
+              )
+            : [],
+        ),
+      )
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const updateStatus = (id, status) => setApps(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  const companies = useMemo(() => {
+    const companiesByDrive = new Map();
+    applications.forEach((application) => {
+      const drive = application.drive;
+      if (!drive?._id) return;
 
-  const counts = tabs.reduce((acc, t) => {
-    acc[t] = t === "All" ? apps.length : apps.filter(a => a.status === t).length;
-    return acc;
-  }, {});
+      const key = String(drive._id);
+      const current = companiesByDrive.get(key) || {
+        drive,
+        applications: [],
+      };
+      current.applications.push(application);
+      companiesByDrive.set(key, current);
+    });
+
+    return [...companiesByDrive.values()].filter(({ drive }) => {
+        const query = search.toLowerCase().trim();
+        return (
+          !query ||
+          drive.company?.toLowerCase().includes(query) ||
+          drive.role?.toLowerCase().includes(query)
+        );
+      });
+  }, [applications, search]);
+
+  const handleStatusChange = async (id, status) => {
+    try {
+      const updated = await updateApplicationStatus(id, status);
+      setApplications((current) =>
+        current.map((application) =>
+          application._id === id ? updated : application,
+        ),
+      );
+      setSelectedCompany(
+        (current) =>
+          current && {
+            ...current,
+            applications: current.applications.map((application) =>
+              application._id === id ? updated : application,
+            ),
+          },
+      );
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
+  const handleViewResume = async (application) => {
+    const studentId = application.student?._id;
+    if (!studentId) {
+      setError("Student profile not found");
+      return;
+    }
+
+    try {
+      const blob = await fetchStudentResume(studentId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
+  const handleDownloadExport = async (driveId) => {
+    try {
+      const blob = await downloadApplicationsExport(driveId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = driveId
+        ? `applications-${selectedCompany?.drive?.company || "company"}.xls`
+        : "campus-connect-applications.xls";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-5 p-6 overflow-y-auto h-full" style={{ backgroundColor: "#f0f4fb" }}>
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: "#0f172a" }}>Applications</h1>
-        <p className="text-sm mt-0.5" style={{ color: "#64748b" }}>Review and manage all student applications</p>
-      </div>
-
-      {/* Stat tiles */}
-      <div className="grid grid-cols-5 gap-3">
-        {["Applied", "Shortlisted", "On Hold", "Rejected", "Offer"].map(s => (
-          <div key={s} className="bg-white rounded-2xl px-4 py-4 text-center" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-            <div className="text-2xl font-bold" style={{ color: (statusConfig[s] || {}).text || "#0f172a" }}>{counts[s] || 0}</div>
-            <div className="text-xs font-medium mt-0.5" style={{ color: "#64748b" }}>{s}</div>
+    <div
+      className="flex flex-col gap-5 p-6 overflow-y-auto h-full"
+      style={{ backgroundColor: "#f0f4fb" }}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "#0f172a" }}>
+            Applications
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: "#64748b" }}>
+            Select a company to view students who applied
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div
+            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white"
+            style={{ color: "#4f7ef7" }}
+          >
+            {applications.length} total applications
           </div>
-        ))}
+          <button
+            type="button"
+            onClick={() => handleDownloadExport()}
+            className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
+            style={{ backgroundColor: "#4f7ef7" }}
+          >
+            Download Excel
+          </button>
+        </div>
       </div>
 
-      {/* Tabs + Search */}
-      <div className="bg-white rounded-2xl px-5 py-4 flex items-center gap-4 flex-wrap" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div className="flex gap-2 flex-wrap flex-1">
-          {tabs.map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{ backgroundColor: tab === t ? "#4f7ef7" : "#f1f5f9", color: tab === t ? "#fff" : "#64748b" }}>
-              {t}
-              <span className="rounded-full px-1.5 py-0.5 text-xs" style={{ backgroundColor: tab === t ? "rgba(255,255,255,0.2)" : "#e2e8f0", color: tab === t ? "#fff" : "#94a3b8" }}>
-                {counts[t]}
-              </span>
+      {error && (
+        <div
+          className="rounded-xl px-4 py-3 text-sm"
+          style={{ backgroundColor: "#fee2e2", color: "#b91c1c" }}
+        >
+          {error}
+        </div>
+      )}
+
+      <div
+        className="bg-white rounded-2xl px-5 py-4 flex items-center gap-2"
+        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#94a3b8"
+          strokeWidth="2"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search company or role..."
+          className="flex-1 text-sm outline-none"
+          style={{ color: "#0f172a" }}
+        />
+      </div>
+
+      {loading ? (
+        <div
+          className="bg-white rounded-2xl p-12 text-center text-sm"
+          style={{ color: "#64748b" }}
+        >
+          Loading applications...
+        </div>
+      ) : companies.length === 0 ? (
+        <div
+          className="bg-white rounded-2xl p-12 text-center text-sm"
+          style={{ color: "#64748b" }}
+        >
+          No applications found.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {companies.map(({ drive, applications: companyApplications }) => (
+            <button
+              key={drive._id}
+              type="button"
+              onClick={() =>
+                setSelectedCompany({ drive, applications: companyApplications })
+              }
+              className="bg-white rounded-2xl p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+            >
+              <div className="flex items-center gap-3">
+                <CompanyAvatar company={drive.company} />
+                <div className="min-w-0">
+                  <div
+                    className="font-bold truncate"
+                    style={{ color: "#0f172a" }}
+                  >
+                    {drive.company}
+                  </div>
+                  <div
+                    className="text-sm truncate"
+                    style={{ color: "#64748b" }}
+                  >
+                    {drive.role}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-5">
+                <div
+                  className="rounded-xl p-3"
+                  style={{ backgroundColor: "#f8fafc" }}
+                >
+                  <div
+                    className="text-2xl font-bold"
+                    style={{ color: "#4f7ef7" }}
+                  >
+                    {companyApplications.length}
+                  </div>
+                  <div className="text-xs" style={{ color: "#64748b" }}>
+                    Students Applied
+                  </div>
+                </div>
+                <div
+                  className="rounded-xl p-3"
+                  style={{ backgroundColor: "#f8fafc" }}
+                >
+                  <div
+                    className="text-2xl font-bold"
+                    style={{ color: "#059669" }}
+                  >
+                    {
+                      companyApplications.filter(
+                        (application) => application.status === "Shortlisted",
+                      ).length
+                    }
+                  </div>
+                  <div className="text-xs" style={{ color: "#64748b" }}>
+                    Shortlisted
+                  </div>
+                </div>
+              </div>
+              <div
+                className="text-xs font-semibold mt-4"
+                style={{ color: "#4f7ef7" }}
+              >
+                View student details →
+              </div>
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 border" style={{ borderColor: "#e2e8f0" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search student, company..."
-            className="text-sm outline-none bg-transparent" style={{ color: "#0f172a", width: 180 }} />
-        </div>
-      </div>
+      )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div className="px-5 py-3 border-b" style={{ borderColor: "#f1f5f9" }}>
-          <span className="text-sm font-medium" style={{ color: "#64748b" }}>{filtered.length} applications</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr style={{ backgroundColor: "#f8fafc" }}>
-                {["Student", "Roll No.", "Branch", "CGPA", "Company", "Role", "Applied On", "Status", "Actions"].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold" style={{ color: "#64748b" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y" style={{ borderColor: "#f1f5f9" }}>
-              {filtered.map(a => (
-                <tr key={a.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={a.name} />
-                      <span className="text-sm font-medium" style={{ color: "#0f172a" }}>{a.name}</span>
+      {selectedCompany && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-5"
+          style={{ backgroundColor: "rgba(15,23,42,0.48)" }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl">
+            <div
+              className="flex items-center justify-between px-6 py-5 border-b"
+              style={{ borderColor: "#f1f5f9" }}
+            >
+              <div className="flex items-center gap-3">
+                <CompanyAvatar company={selectedCompany.drive.company} />
+                <div>
+                  <h2
+                    className="text-lg font-bold"
+                    style={{ color: "#0f172a" }}
+                  >
+                    {selectedCompany.drive.company}
+                  </h2>
+                  <p className="text-sm" style={{ color: "#64748b" }}>
+                    {selectedCompany.drive.role} ·{" "}
+                    {selectedCompany.applications.length} applicants
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDownloadExport(selectedCompany.drive._id)}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                Download Excel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCompany(null);
+                  setSelectedApplication(null);
+                }}
+                className="rounded-lg p-2 hover:bg-slate-100 text-2xl"
+                style={{ color: "#64748b" }}
+              >
+                ×
+              </button>
+            </div>
+
+            {selectedApplication && (
+              <div
+                className="px-6 py-5 border-b"
+                style={{ borderColor: "#f1f5f9", backgroundColor: "#f8fafc" }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                      Applicant profile
+                    </p>
+                    <h3 className="text-lg font-bold text-slate-900 mt-1">
+                      {studentName(selectedApplication)}
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      {selectedApplication.student?.userId?.email || "No email"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedApplication(null)}
+                    className="text-xs font-semibold text-slate-500 hover:text-blue-600"
+                  >
+                    Close details
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                  {[
+                    ["Roll number", selectedApplication.student?.rollNumber || "-"],
+                    [
+                      "Branch",
+                      selectedApplication.student?.academicDetails?.graduation
+                        ?.branch || "-",
+                    ],
+                    [
+                      "CGPA",
+                      selectedApplication.student?.academicDetails?.graduation
+                        ?.cgpa || "-",
+                    ],
+                    [
+                      "Resume",
+                      selectedApplication.resume ||
+                        selectedApplication.student?.resume
+                        ? "Attached"
+                        : "Not uploaded",
+                    ],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-xl bg-white p-3">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                        {label}
+                      </p>
+                      <p className="text-sm font-semibold text-slate-700 mt-1 truncate">
+                        {value}
+                      </p>
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#64748b" }}>{a.roll}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#334155" }}>{a.branch}</td>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "#334155" }}>{a.cgpa}</td>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "#0f172a" }}>{a.company}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#64748b" }}>{a.role}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#94a3b8" }}>{a.appliedOn}</td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: (statusConfig[a.status] || {}).bg, color: (statusConfig[a.status] || {}).text }}>
-                      {a.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <select value={a.status} onChange={e => updateStatus(a.id, e.target.value)}
-                      className="text-xs rounded-lg px-2 py-1.5 border outline-none cursor-pointer" style={{ borderColor: "#e2e8f0", color: "#334155" }}>
-                      {["Applied", "Shortlisted", "On Hold", "Rejected", "Offer"].map(s => <option key={s}>{s}</option>)}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-16 text-center text-sm" style={{ color: "#94a3b8" }}>No applications found.</td></tr>
-              )}
-            </tbody>
-          </table>
+                  ))}
+                </div>
+                {(selectedApplication.student?.resume ||
+                  selectedApplication.resume) && (
+                  <button
+                    type="button"
+                    onClick={() => handleViewResume(selectedApplication)}
+                    className="mt-4 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                  >
+                    View applicant resume
+                  </button>
+                )}
+
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 mb-2">
+                      Skills
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(selectedApplication.student?.skills || []).length > 0 ? (
+                        selectedApplication.student.skills.map((skill) => (
+                          <span
+                            key={skill}
+                            className="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700"
+                          >
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-400">No skills added</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 mb-2">
+                      Cover letter
+                    </p>
+                    <p className="text-xs leading-relaxed text-slate-500 whitespace-pre-wrap">
+                      {selectedApplication.coverLetter || "No cover letter provided."}
+                    </p>
+                  </div>
+                </div>
+
+                {(selectedApplication.student?.projects || []).length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-slate-600 mb-2">
+                      Projects
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedApplication.student.projects.map((project) => (
+                        <span
+                          key={project._id || project.name}
+                          className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600"
+                        >
+                          {project.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="overflow-auto max-h-[calc(90vh-105px)]">
+              <table className="w-full">
+                <thead>
+                  <tr style={{ backgroundColor: "#f8fafc" }}>
+                    {[
+                      "Student",
+                      "Email",
+                      "Roll No.",
+                      "Branch",
+                      "CGPA",
+                      "Resume",
+                      "Applied On",
+                      "Status",
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        className="px-4 py-3 text-left text-xs font-semibold"
+                        style={{ color: "#64748b" }}
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: "#f1f5f9" }}>
+                  {selectedCompany.applications.map((application) => {
+                    const student = application.student || {};
+                    const name = studentName(application);
+                    const graduation =
+                      student.academicDetails?.graduation || {};
+                    const status =
+                      statusConfig[application.status] || statusConfig.Applied;
+                    return (
+                      <tr key={application._id}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar name={name} size={34} />
+                            <button
+                              type="button"
+                              onClick={() => setSelectedApplication(application)}
+                              className="text-sm font-semibold hover:text-blue-600"
+                              style={{ color: "#0f172a" }}
+                            >
+                              {name}
+                            </button>
+                          </div>
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm"
+                          style={{ color: "#64748b" }}
+                        >
+                          {student.userId?.email || "-"}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm"
+                          style={{ color: "#334155" }}
+                        >
+                          {student.rollNumber || "-"}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm"
+                          style={{ color: "#334155" }}
+                        >
+                          {graduation.branch || "-"}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm font-semibold"
+                          style={{ color: "#334155" }}
+                        >
+                          {graduation.cgpa || "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => handleViewResume(application)}
+                            disabled={
+                              !application.student?.resume &&
+                              !application.resume
+                            }
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            View resume
+                          </button>
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm"
+                          style={{ color: "#64748b" }}
+                        >
+                          {new Date(
+                            application.appliedAt || application.createdAt,
+                          ).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={application.status}
+                            onChange={(event) =>
+                              handleStatusChange(
+                                application._id,
+                                event.target.value,
+                              )
+                            }
+                            className="text-xs rounded-lg px-2 py-1.5 border outline-none"
+                            style={{
+                              backgroundColor: status.bg,
+                              color: status.text,
+                              borderColor: status.bg,
+                            }}
+                          >
+                            {statuses.map((option) => (
+                              <option key={option}>{option}</option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

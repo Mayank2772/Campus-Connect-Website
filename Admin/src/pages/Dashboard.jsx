@@ -1,153 +1,470 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { getApplications } from "../api/applications";
+import { getDrives } from "../api/drives";
 
-const statCards = [
-  { label: "Total Students", value: "1,284", change: "+24 this month", changePos: true, color: "#4f7ef7", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>) },
-  { label: "Active Drives", value: "8", change: "3 closing this week", changePos: false, color: "#f59e0b", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>) },
-  { label: "Total Applications", value: "3,542", change: "+187 this week", changePos: true, color: "#10b981", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>) },
-  { label: "Offers Given", value: "312", change: "+18 this month", changePos: true, color: "#6c63ff", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) },
-  { label: "Shortlisted", value: "486", change: "Across 8 drives", changePos: true, color: "#ec4899", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>) },
-];
-
-const recentDrives = [
-  { company: "Google", role: "Software Engineer (SDE-1)", type: "Dream", ctc: "₹32 LPA", applied: 148, deadline: "Aug 5, 2025", status: "Closed" },
-  { company: "Microsoft", role: "Software Development Engineer", type: "Dream", ctc: "₹28 LPA", applied: 132, deadline: "Aug 12, 2025", status: "Closed" },
-  { company: "Amazon", role: "SDE-1", type: "Dream", ctc: "₹26 LPA", applied: 95, deadline: "Sep 10, 2025", status: "Active" },
-  { company: "Infosys", role: "Systems Engineer", type: "Mass", ctc: "₹4.5 LPA", applied: 420, deadline: "Sep 18, 2025", status: "Active" },
-  { company: "Wipro", role: "Project Engineer", type: "Mass", ctc: "₹3.5 LPA", applied: 380, deadline: "Sep 20, 2025", status: "Active" },
-];
-
-const recentApps = [
-  { name: "Arjun Mehta", roll: "CSE/2025/042", company: "Google", status: "Shortlisted", statusColor: "#10b981" },
-  { name: "Priya Sharma", roll: "ECE/2025/017", company: "Microsoft", status: "Applied", statusColor: "#4f7ef7" },
-  { name: "Rohit Gupta", roll: "CSE/2025/088", company: "Amazon", status: "On Hold", statusColor: "#f59e0b" },
-  { name: "Anjali Singh", roll: "IT/2025/031", company: "Infosys", status: "Rejected", statusColor: "#ef4444" },
-  { name: "Vikram Nair", roll: "CSE/2025/064", company: "Google", status: "Offer", statusColor: "#6c63ff" },
-];
-
-const typeColor = {
-  Dream: { bg: "#ede9fe", text: "#6c63ff" },
-  Mass: { bg: "#fef3c7", text: "#d97706" },
-  Super: { bg: "#dbeafe", text: "#4f7ef7" },
+const statusColors = {
+  Applied: "#4f7ef7",
+  Shortlisted: "#10b981",
+  Interview: "#0891b2",
+  "On Hold": "#f59e0b",
+  Rejected: "#ef4444",
+  Offer: "#6c63ff",
 };
 
-const statusDot = { Active: "#10b981", Closed: "#94a3b8" };
-
-function Avatar({ name, size = 34 }) {
-  const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-  const colors = ["#4f7ef7", "#6c63ff", "#10b981", "#f59e0b", "#ec4899", "#ef4444"];
-  const color = colors[name.charCodeAt(0) % colors.length];
+function initials(name = "") {
   return (
-    <div className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
-      style={{ width: size, height: size, background: color }}>
-      {initials}
+    name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?"
+  );
+}
+
+function studentName(application) {
+  const student = application.student;
+  if (!student) return "Unknown student";
+  return (
+    `${student.firstName || ""} ${student.lastName || ""}`.trim() ||
+    student.userId?.name ||
+    "Unknown student"
+  );
+}
+
+function formatDate(value) {
+  if (!value) return "No deadline";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function daysUntil(value) {
+  if (!value) return null;
+  return Math.ceil((new Date(value).getTime() - Date.now()) / 86400000);
+}
+
+function Avatar({ name, color = "#4f7ef7" }) {
+  return (
+    <div
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+      style={{ backgroundColor: color }}
+    >
+      {initials(name)}
     </div>
   );
 }
 
-export default function Dashboard() {
+function StatIcon({ type }) {
+  const paths = {
+    students: (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+    drives: (
+      <>
+        <rect x="3" y="7" width="18" height="13" rx="2" />
+        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2" />
+      </>
+    ),
+    applications: (
+      <>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M8 13h8M8 17h5" />
+      </>
+    ),
+    offers: (
+      <>
+        <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+      </>
+    ),
+    shortlisted: (
+      <>
+        <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+      </>
+    ),
+  };
+
   return (
-    <div className="flex flex-col gap-6 p-6 overflow-y-auto h-full" style={{ backgroundColor: "#f0f4fb" }}>
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: "#0f172a" }}>Dashboard</h1>
-        <p className="text-sm mt-0.5" style={{ color: "#64748b" }}>Welcome back, Admin. Here's what's happening today.</p>
-      </div>
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {paths[type]}
+    </svg>
+  );
+}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-5 gap-4" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
-        {statCards.map((s) => (
-          <div key={s.label} className="rounded-2xl bg-white p-4 flex flex-col gap-3" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-            <div className="flex items-center justify-between">
-              <div className="rounded-xl flex items-center justify-center" style={{ width: 42, height: 42, backgroundColor: s.color + "18" }}>
-                <span style={{ color: s.color }}>{s.icon}</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold" style={{ color: "#0f172a" }}>{s.value}</div>
-              <div className="text-xs font-medium mt-0.5" style={{ color: "#64748b" }}>{s.label}</div>
-            </div>
-            <div className="text-xs font-medium" style={{ color: s.changePos ? "#10b981" : "#f59e0b" }}>
-              {s.change}
-            </div>
-          </div>
-        ))}
-      </div>
+export default function Dashboard() {
+  const [drives, setDrives] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-      {/* Tables Row */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Recent Drives */}
-        <div className="rounded-2xl bg-white" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
-            <div className="font-semibold text-sm" style={{ color: "#0f172a" }}>Recent Placement Drives</div>
-            <button className="text-xs font-medium" style={{ color: "#4f7ef7" }}>View All →</button>
+  useEffect(() => {
+    const loadDashboard = () =>
+      Promise.all([getDrives(), getApplications()])
+      .then(([driveData, applicationData]) => {
+        setDrives(Array.isArray(driveData) ? driveData : []);
+        setApplications(
+          Array.isArray(applicationData)
+            ? applicationData.filter(
+                (application) => application.student && application.drive,
+              )
+            : [],
+        );
+        setError("");
+      })
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+
+    loadDashboard();
+    const refreshTimer = window.setInterval(loadDashboard, 30000);
+    return () => window.clearInterval(refreshTimer);
+  }, []);
+
+  const activeDrives = drives.filter((drive) => drive.status === "Active");
+  const offers = applications.filter(
+    (application) => application.status === "Offer",
+  );
+  const shortlisted = applications.filter(
+    (application) => application.status === "Shortlisted",
+  );
+  const studentCount = useMemo(
+    () =>
+      new Set(
+        applications
+          .map((application) => application.student?._id)
+          .filter(Boolean),
+      ).size,
+    [applications],
+  );
+  const closingSoon = activeDrives.filter((drive) => {
+    const days = daysUntil(drive.deadline);
+    return days !== null && days >= 0 && days <= 7;
+  }).length;
+  const recentDrives = [...drives]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || b.deadline) -
+        new Date(a.createdAt || a.deadline),
+    )
+    .slice(0, 5);
+  const recentApplications = applications.slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-[#f0f4fb]">
+        <div className="rounded-2xl bg-white px-6 py-4 text-sm text-slate-500 shadow-sm">
+          Loading dashboard...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-y-auto bg-[#f6f8fc] p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-6">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              Overview
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              Good morning, Admin
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Here&apos;s what&apos;s happening across your placement program.
+            </p>
           </div>
-          <div className="divide-y" style={{ borderColor: "#f1f5f9" }}>
-            {recentDrives.map((d) => (
-              <div key={d.company + d.role} className="flex items-center gap-3 px-5 py-3">
-                <Avatar name={d.company} size={34} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate" style={{ color: "#0f172a" }}>{d.company}</div>
-                  <div className="text-xs truncate" style={{ color: "#64748b" }}>{d.role}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-semibold" style={{ color: "#0f172a" }}>{d.ctc}</div>
-                  <div className="text-xs" style={{ color: "#94a3b8" }}>{d.applied} applied</div>
-                </div>
-                <div className="flex items-center gap-1.5 ml-2">
-                  <div className="rounded-full" style={{ width: 7, height: 7, backgroundColor: statusDot[d.status] }} />
-                  <span className="text-xs" style={{ color: "#64748b" }}>{d.status}</span>
-                </div>
-              </div>
-            ))}
+          <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-500 shadow-sm">
+            {new Intl.DateTimeFormat("en-IN", {
+              weekday: "long",
+              day: "numeric",
+              month: "short",
+            }).format(new Date())}
           </div>
         </div>
 
-        {/* Recent Applications */}
-        <div className="rounded-2xl bg-white" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
-            <div className="font-semibold text-sm" style={{ color: "#0f172a" }}>Recent Applications</div>
-            <button className="text-xs font-medium" style={{ color: "#4f7ef7" }}>View All →</button>
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+            Unable to load live data: {error}
           </div>
-          <div className="divide-y" style={{ borderColor: "#f1f5f9" }}>
-            {recentApps.map((a) => (
-              <div key={a.name} className="flex items-center gap-3 px-5 py-3">
-                <Avatar name={a.name} size={34} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate" style={{ color: "#0f172a" }}>{a.name}</div>
-                  <div className="text-xs truncate" style={{ color: "#64748b" }}>{a.roll}</div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            ["Total Students", studentCount, "unique applicants", "#4f7ef7", "students"],
+            [
+              "Active Drives",
+              activeDrives.length,
+              `${closingSoon} closing this week`,
+              "#f59e0b",
+              "drives",
+            ],
+            [
+              "Total Applications",
+              applications.length,
+              "across all drives",
+              "#10b981",
+              "applications",
+            ],
+            [
+              "Offers Given",
+              offers.length,
+              `${shortlisted.length} shortlisted`,
+              "#6c63ff",
+              "offers",
+            ],
+            [
+              "Shortlisted",
+              shortlisted.length,
+              "current applications",
+              "#ec4899",
+              "shortlisted",
+            ],
+          ].map(([label, value, note, color, icon]) => (
+            <div
+              key={label}
+              className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+            >
+              <div
+                className="absolute right-0 top-0 h-20 w-20 translate-x-7 -translate-y-7 rounded-full opacity-60"
+                style={{ backgroundColor: `${color}12` }}
+              />
+              <div className="relative flex items-start justify-between">
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-xl"
+                  style={{ color, backgroundColor: `${color}16` }}
+                >
+                  <StatIcon type={icon} />
                 </div>
-                <div className="text-xs font-medium" style={{ color: "#64748b" }}>{a.company}</div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full ml-2" style={{ backgroundColor: a.statusColor + "18", color: a.statusColor }}>
-                  {a.status}
+                <span
+                  className="rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide"
+                  style={{ color, backgroundColor: `${color}12` }}
+                >
+                  Live
                 </span>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Stats Bar */}
-      <div className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div className="font-semibold text-sm mb-4" style={{ color: "#0f172a" }}>Placement Overview — Batch 2025</div>
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: "Placement Rate", value: "78%", sub: "1,001 / 1,284 students", bar: 78, color: "#4f7ef7" },
-            { label: "Avg. Package", value: "₹8.4 LPA", sub: "Up from ₹7.2 LPA last year", bar: 68, color: "#10b981" },
-            { label: "Highest Package", value: "₹42 LPA", sub: "Google — SDE-2", bar: 90, color: "#6c63ff" },
-            { label: "Companies Visited", value: "34", sub: "12 more expected this semester", bar: 60, color: "#f59e0b" },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="flex items-end justify-between mb-1.5">
-                <span className="text-xs" style={{ color: "#64748b" }}>{s.label}</span>
-                <span className="text-sm font-bold" style={{ color: "#0f172a" }}>{s.value}</span>
+              <div className="relative mt-5 text-3xl font-bold tracking-tight text-slate-950">
+                {value}
               </div>
-              <div className="rounded-full h-2 w-full" style={{ backgroundColor: "#f1f5f9" }}>
-                <div className="rounded-full h-2 transition-all" style={{ width: `${s.bar}%`, backgroundColor: s.color }} />
+              <div className="relative mt-1 text-sm font-semibold text-slate-600">
+                {label}
               </div>
-              <div className="text-xs mt-1.5" style={{ color: "#94a3b8" }}>{s.sub}</div>
+              <div className="relative mt-3 flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+                {note}
+              </div>
             </div>
           ))}
         </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4.5">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                Recent Placement Drives
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-400">Latest opportunities</p>
+              </div>
+              <Link to="/drives" className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50">
+                View all
+              </Link>
+            </div>
+            {recentDrives.length === 0 ? (
+              <div className="px-5 py-12 text-center text-sm text-slate-400">
+                No placement drives found.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {recentDrives.map((drive) => {
+                  const days = daysUntil(drive.deadline);
+                  return (
+                    <div
+                      key={drive._id || drive.id}
+                      className="flex items-center gap-3 px-5 py-3"
+                    >
+                      <Avatar name={drive.company || "Drive"} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-slate-900">
+                          {drive.company}
+                        </div>
+                        <div className="truncate text-xs text-slate-500">
+                          {drive.role}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-semibold text-slate-900">
+                          {drive.type || "Full-Time"}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {drive.applied || 0} applied
+                        </div>
+                      </div>
+                      <div className="min-w-[82px] text-right">
+                        <div
+                          className={`text-xs font-semibold ${days !== null && days >= 0 && days <= 7 ? "text-orange-600" : "text-slate-500"}`}
+                        >
+                          {days !== null && days >= 0 && days <= 7
+                            ? `${days}d left`
+                            : drive.status || "Active"}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {formatDate(drive.deadline)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4.5">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                Recent Applications
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-400">Latest candidate activity</p>
+              </div>
+              <Link
+                to="/applications"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50"
+              >
+                View all
+              </Link>
+            </div>
+            {recentApplications.length === 0 ? (
+              <div className="px-5 py-12 text-center text-sm text-slate-400">
+                No applications found.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {recentApplications.map((application) => {
+                  const name = studentName(application);
+                  const color =
+                    statusColors[application.status] || statusColors.Applied;
+                  return (
+                    <div
+                      key={application._id}
+                      className="flex items-center gap-3 px-5 py-3"
+                    >
+                      <Avatar name={name} color={color} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-slate-900">
+                          {name}
+                        </div>
+                        <div className="truncate text-xs text-slate-500">
+                          {application.drive?.company || "Unknown drive"}
+                        </div>
+                      </div>
+                      <span
+                        className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                        style={{ color, backgroundColor: `${color}18` }}
+                      >
+                        {application.status || "Applied"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Placement Overview
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-400">Performance at a glance</p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Live data
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              [
+                "Active Drive Share",
+                drives.length
+                  ? `${Math.round((activeDrives.length / drives.length) * 100)}%`
+                  : "0%",
+                `${activeDrives.length} of ${drives.length} drives active`,
+                drives.length ? (activeDrives.length / drives.length) * 100 : 0,
+                "#4f7ef7",
+              ],
+              [
+                "Shortlist Rate",
+                applications.length
+                  ? `${Math.round((shortlisted.length / applications.length) * 100)}%`
+                  : "0%",
+                `${shortlisted.length} of ${applications.length} applications`,
+                applications.length
+                  ? (shortlisted.length / applications.length) * 100
+                  : 0,
+                "#10b981",
+              ],
+              [
+                "Offer Rate",
+                applications.length
+                  ? `${Math.round((offers.length / applications.length) * 100)}%`
+                  : "0%",
+                `${offers.length} offers from ${applications.length} applications`,
+                applications.length
+                  ? (offers.length / applications.length) * 100
+                  : 0,
+                "#6c63ff",
+              ],
+              [
+                "Internship Drives",
+                drives
+                  .filter((drive) => drive.type === "Internship")
+                  .length.toString(),
+                "from the live drive list",
+                drives.length
+                  ? (drives.filter((drive) => drive.type === "Internship")
+                      .length /
+                      drives.length) *
+                    100
+                  : 0,
+                "#f59e0b",
+              ],
+            ].map(([label, value, note, progress, color]) => (
+              <div key={label}>
+                <div className="mb-1.5 flex items-end justify-between">
+                  <span className="text-xs text-slate-500">{label}</span>
+                  <strong className="text-sm text-slate-900">{value}</strong>
+                </div>
+                <div className="h-2 w-full rounded-full bg-slate-100">
+                  <div
+                    className="h-2 rounded-full transition-all"
+                    style={{ width: `${progress}%`, backgroundColor: color }}
+                  />
+                </div>
+                <div className="mt-1.5 text-xs text-slate-400">{note}</div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -1,215 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getApplications } from "../api/applications";
+import {
+  deleteStudent as deleteStudentRequest,
+  fetchStudentResume,
+  getStudents,
+  updateStudent,
+} from "../api/students";
 
-const initialStudents = [
-  {
-    id: 1,
-    name: "Arjun Mehta",
-    roll: "CSE/2025/042",
-    branch: "CSE",
-    batch: 2025,
-    cgpa: 8.9,
-    tenth: 92,
-    twelfth: 88,
-    backlog: false,
-    phone: "+91 98765 43210",
-    email: "arjun.mehta@nitr.ac.in",
-    placed: true,
-    company: "Google",
-    ctc: "₹32 LPA",
-  },
-  {
-    id: 2,
-    name: "Priya Sharma",
-    roll: "ECE/2025/017",
-    branch: "ECE",
-    batch: 2025,
-    cgpa: 8.2,
-    tenth: 89,
-    twelfth: 85,
-    backlog: false,
-    phone: "+91 87654 32109",
-    email: "priya.sharma@nitr.ac.in",
-    placed: false,
-    company: "",
-    ctc: "",
-  },
-  {
-    id: 3,
-    name: "Rohit Gupta",
-    roll: "CSE/2025/088",
-    branch: "CSE",
-    batch: 2025,
-    cgpa: 7.6,
-    tenth: 85,
-    twelfth: 80,
-    backlog: true,
-    phone: "+91 76543 21098",
-    email: "rohit.gupta@nitr.ac.in",
-    placed: false,
-    company: "",
-    ctc: "",
-  },
-  {
-    id: 4,
-    name: "Anjali Singh",
-    roll: "IT/2025/031",
-    branch: "IT",
-    batch: 2025,
-    cgpa: 7.1,
-    tenth: 78,
-    twelfth: 76,
-    backlog: false,
-    phone: "+91 65432 10987",
-    email: "anjali.singh@nitr.ac.in",
-    placed: false,
-    company: "",
-    ctc: "",
-  },
-  {
-    id: 5,
-    name: "Vikram Nair",
-    roll: "CSE/2025/064",
-    branch: "CSE",
-    batch: 2025,
-    cgpa: 9.1,
-    tenth: 96,
-    twelfth: 94,
-    backlog: false,
-    phone: "+91 54321 09876",
-    email: "vikram.nair@nitr.ac.in",
-    placed: true,
-    company: "Google",
-    ctc: "₹32 LPA",
-  },
-  {
-    id: 6,
-    name: "Sneha Patel",
-    roll: "CSE/2025/011",
-    branch: "CSE",
-    batch: 2025,
-    cgpa: 8.5,
-    tenth: 91,
-    twelfth: 87,
-    backlog: false,
-    phone: "+91 43210 98765",
-    email: "sneha.patel@nitr.ac.in",
-    placed: false,
-    company: "",
-    ctc: "",
-  },
-  {
-    id: 7,
-    name: "Karan Verma",
-    roll: "ECE/2025/055",
-    branch: "ECE",
-    batch: 2025,
-    cgpa: 7.8,
-    tenth: 82,
-    twelfth: 79,
-    backlog: false,
-    phone: "+91 32109 87654",
-    email: "karan.verma@nitr.ac.in",
-    placed: false,
-    company: "",
-    ctc: "",
-  },
-  {
-    id: 8,
-    name: "Meera Iyer",
-    roll: "CSE/2025/022",
-    branch: "CSE",
-    batch: 2025,
-    cgpa: 8.7,
-    tenth: 93,
-    twelfth: 91,
-    backlog: false,
-    phone: "+91 21098 76543",
-    email: "meera.iyer@nitr.ac.in",
-    placed: true,
-    company: "Flipkart",
-    ctc: "₹24 LPA",
-  },
-  {
-    id: 9,
-    name: "Aditya Kumar",
-    roll: "IT/2025/044",
-    branch: "IT",
-    batch: 2025,
-    cgpa: 7.3,
-    tenth: 80,
-    twelfth: 77,
-    backlog: false,
-    phone: "+91 10987 65432",
-    email: "aditya.kumar@nitr.ac.in",
-    placed: true,
-    company: "Deloitte",
-    ctc: "₹7 LPA",
-  },
-  {
-    id: 10,
-    name: "Pooja Reddy",
-    roll: "CSE/2025/077",
-    branch: "CSE",
-    batch: 2025,
-    cgpa: 9.3,
-    tenth: 97,
-    twelfth: 95,
-    backlog: false,
-    phone: "+91 09876 54321",
-    email: "pooja.reddy@nitr.ac.in",
-    placed: true,
-    company: "Microsoft",
-    ctc: "₹28 LPA",
-  },
-  {
-    id: 11,
-    name: "Rahul Joshi",
-    roll: "CSE/2025/033",
-    branch: "CSE",
-    batch: 2025,
-    cgpa: 7.9,
-    tenth: 86,
-    twelfth: 82,
-    backlog: false,
-    phone: "+91 98765 11111",
-    email: "rahul.joshi@nitr.ac.in",
-    placed: false,
-    company: "",
-    ctc: "",
-  },
-  {
-    id: 12,
-    name: "Divya Nair",
-    roll: "EEE/2025/009",
-    branch: "EEE",
-    batch: 2025,
-    cgpa: 7.0,
-    tenth: 77,
-    twelfth: 74,
-    backlog: true,
-    phone: "+91 87654 22222",
-    email: "divya.nair@nitr.ac.in",
-    placed: false,
-    company: "",
-    ctc: "",
-  },
-];
+function normalizeStudent(student, offer) {
+  const graduation = student.academicDetails?.graduation || {};
+  const class10 = student.academicDetails?.class10 || {};
+  const class12 = student.academicDetails?.class12 || {};
+  const user =
+    student.userId && typeof student.userId === "object" ? student.userId : {};
 
-const EMPTY_STUDENT = {
-  name: "",
-  roll: "",
-  branch: "CSE",
-  batch: 2025,
-  cgpa: "",
-  tenth: "",
-  twelfth: "",
-  backlog: false,
-  phone: "",
-  email: "",
-  placed: false,
-  company: "",
-  ctc: "",
-};
+  return {
+    id: student._id,
+    name:
+      `${student.firstName || ""} ${student.lastName || ""}`.trim() ||
+      user.name ||
+      "Unnamed student",
+    roll: student.rollNumber || "-",
+    branch: graduation.branch || "-",
+    batch: graduation.endYear || "-",
+    cgpa: graduation.cgpa ?? student.cgpa ?? 0,
+    tenth: class10.percentage ?? student.tenthPercentage ?? 0,
+    twelfth: class12.percentage ?? student.twelfthPercentage ?? 0,
+    backlog: Number(student.activeBacklogs || 0) > 0,
+    phone: student.phone || "",
+    email: user.email || "",
+    placed: Boolean(offer),
+    company: offer?.drive?.company || "",
+    ctc: offer?.drive?.ctc ? `₹${offer.drive.ctc} LPA` : "",
+    hasResume: Boolean(student.resume),
+  };
+}
 
 function Avatar({ name }) {
   const initials = name
@@ -231,7 +56,8 @@ function Avatar({ name }) {
   return (
     <div
       className="flex items-center justify-center rounded-full text-white text-xs font-bold shrink-0"
-      style={{ width: 34, height: 34, background: color }}>
+      style={{ width: 34, height: 34, background: color }}
+    >
       {initials}
     </div>
   );
@@ -241,27 +67,32 @@ function Modal({ title, onClose, children }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}>
+      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+    >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto"
-        style={{ maxWidth: 580 }}>
+        style={{ maxWidth: 580 }}
+      >
         <div
           className="flex items-center justify-between px-6 py-4 border-b"
-          style={{ borderColor: "#f1f5f9" }}>
+          style={{ borderColor: "#f1f5f9" }}
+        >
           <h2 className="font-semibold text-base" style={{ color: "#0f172a" }}>
             {title}
           </h2>
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 hover:bg-gray-100"
-            style={{ color: "#64748b" }}>
+            style={{ color: "#64748b" }}
+          >
             <svg
               width="18"
               height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2">
+              strokeWidth="2"
+            >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -280,7 +111,8 @@ function StudentForm({ initial, onSave, onCancel }) {
     <div>
       <label
         className="block text-xs font-semibold mb-1.5"
-        style={{ color: "#475569" }}>
+        style={{ color: "#475569" }}
+      >
         {label}
       </label>
       <input
@@ -305,14 +137,16 @@ function StudentForm({ initial, onSave, onCancel }) {
         <div>
           <label
             className="block text-xs font-semibold mb-1.5"
-            style={{ color: "#475569" }}>
+            style={{ color: "#475569" }}
+          >
             Branch
           </label>
           <select
             value={form.branch}
             onChange={(e) => set("branch", e.target.value)}
             className="w-full rounded-xl px-3.5 py-2.5 text-sm border outline-none"
-            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}>
+            style={{ borderColor: "#e2e8f0", color: "#0f172a" }}
+          >
             {["CSE", "ECE", "IT", "EEE", "ME", "CE"].map((b) => (
               <option key={b}>{b}</option>
             ))}
@@ -361,13 +195,15 @@ function StudentForm({ initial, onSave, onCancel }) {
         <button
           onClick={onCancel}
           className="flex-1 rounded-xl py-2.5 text-sm font-semibold border"
-          style={{ borderColor: "#e2e8f0", color: "#64748b" }}>
+          style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+        >
           Cancel
         </button>
         <button
           onClick={() => onSave(form)}
           className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white"
-          style={{ backgroundColor: "#4f7ef7" }}>
+          style={{ backgroundColor: "#4f7ef7" }}
+        >
           Save Student
         </button>
       </div>
@@ -376,52 +212,122 @@ function StudentForm({ initial, onSave, onCancel }) {
 }
 
 export default function Students() {
-  const [students, setStudents] = useState(initialStudents);
+  const [students, setStudents] = useState([]);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
-  const [filterBranch, setFilterBranch] = useState("All");
-  const [filterPlaced, setFilterPlaced] = useState("All");
   const [modal, setModal] = useState(null);
-  const [nextId, setNextId] = useState(200);
 
-  const branches = ["All", "CSE", "ECE", "IT", "EEE", "ME", "CE"];
+  useEffect(() => {
+    const loadStudents = () => {
+      Promise.all([getStudents(), getApplications()])
+        .then(([studentData, applicationData]) => {
+          const offersByStudent = new Map(
+            applicationData
+              .filter((application) => application.status === "Offer")
+              .map((application) => [
+                String(application.student?._id || application.student),
+                application,
+              ]),
+          );
+
+          setStudents(
+            studentData.map((student) =>
+              normalizeStudent(
+                student,
+                offersByStudent.get(String(student._id)),
+              ),
+            ),
+          );
+          setLoadError("");
+        })
+        .catch((error) => setLoadError(error.message));
+    };
+
+    loadStudents();
+    const refreshTimer = window.setInterval(loadStudents, 15000);
+
+    return () => window.clearInterval(refreshTimer);
+  }, []);
 
   const filtered = students.filter((s) => {
-    const matchSearch =
-      !search ||
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.roll.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase());
-    const matchBranch = filterBranch === "All" || s.branch === filterBranch;
-    const matchPlaced =
-      filterPlaced === "All" ||
-      (filterPlaced === "Placed" ? s.placed : !s.placed);
-    return matchSearch && matchBranch && matchPlaced;
+    const query = search.toLowerCase();
+    return (
+      !query ||
+      s.name.toLowerCase().includes(query) ||
+      s.roll.toLowerCase().includes(query) ||
+      s.email.toLowerCase().includes(query)
+    );
   });
 
-  const handleSave = (form) => {
-    if (!modal) return;
+  const handleSave = async (form) => {
+    if (!modal?.student) return;
 
-    if (modal.type === "add")
-      (setStudents((prev) => [...prev, { ...form, id: nextId }]),
-        setNextId((n) => n + 1));
-    else
+    try {
+      const [firstName, ...lastNameParts] = form.name.trim().split(/\s+/);
+      const response = await updateStudent(modal.student.id, {
+        firstName,
+        lastName: lastNameParts.join(" ") || firstName,
+        phone: form.phone,
+        rollNumber: form.roll,
+        activeBacklogs: form.backlog ? 1 : 0,
+        academicDetails: {
+          graduation: {
+            branch: form.branch,
+            endYear: Number(form.batch) || 0,
+            cgpa: Number(form.cgpa) || 0,
+          },
+          class10: { percentage: Number(form.tenth) || 0 },
+          class12: { percentage: Number(form.twelfth) || 0 },
+        },
+      });
+
       setStudents((prev) =>
-        prev.map((s) => (s.id === modal.student.id ? { ...s, ...form } : s)),
+        prev.map((student) =>
+          student.id === modal.student.id
+            ? normalizeStudent(response.student, {
+                drive: {
+                  company: student.company,
+                  ctc: student.ctc.replace(/[^\d.]/g, ""),
+                },
+              })
+            : student,
+        ),
       );
-    setModal(null);
+      setModal(null);
+    } catch (error) {
+      setLoadError(error.message);
+    }
   };
 
   const handleDelete = () => {
     if (!modal?.student) return;
 
-    setStudents((prev) => prev.filter((s) => s.id !== modal.student.id));
-    setModal(null);
+    deleteStudentRequest(modal.student.id)
+      .then(() => {
+        setStudents((prev) =>
+          prev.filter((student) => student.id !== modal.student.id),
+        );
+        setModal(null);
+      })
+      .catch((error) => setLoadError(error.message));
+  };
+
+  const handleViewResume = async (student) => {
+    try {
+      const blob = await fetchStudentResume(student.id);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      setLoadError(error.message);
+    }
   };
 
   return (
     <div
       className="flex flex-col gap-5 p-6 overflow-y-auto h-full"
-      style={{ backgroundColor: "#f0f4fb" }}>
+      style={{ backgroundColor: "#f0f4fb" }}
+    >
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#0f172a" }}>
@@ -430,23 +336,10 @@ export default function Students() {
           <p className="text-sm mt-0.5" style={{ color: "#64748b" }}>
             Manage registered students
           </p>
+          {loadError && (
+            <p className="mt-2 text-xs font-medium text-red-600">{loadError}</p>
+          )}
         </div>
-        <button
-          onClick={() => setModal({ type: "add", student: EMPTY_STUDENT })}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: "#4f7ef7" }}>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Add Student
-        </button>
       </div>
 
       {/* Stats */}
@@ -472,7 +365,8 @@ export default function Students() {
           <div
             key={s.label}
             className="bg-white rounded-2xl px-5 py-4 flex items-center gap-4"
-            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+          >
             <div className="text-2xl font-bold" style={{ color: s.color }}>
               {s.value}
             </div>
@@ -486,17 +380,20 @@ export default function Students() {
       {/* Filters */}
       <div
         className="bg-white rounded-2xl px-5 py-4 flex items-center gap-3 flex-wrap"
-        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+      >
         <div
           className="flex items-center gap-2 rounded-xl px-3 py-2.5 border flex-1"
-          style={{ borderColor: "#e2e8f0" }}>
+          style={{ borderColor: "#e2e8f0" }}
+        >
           <svg
             width="14"
             height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#94a3b8"
-            strokeWidth="2">
+            strokeWidth="2"
+          >
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -508,40 +405,13 @@ export default function Students() {
             style={{ color: "#0f172a" }}
           />
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {branches.map((b) => (
-            <button
-              key={b}
-              onClick={() => setFilterBranch(b)}
-              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{
-                backgroundColor: filterBranch === b ? "#4f7ef7" : "#f1f5f9",
-                color: filterBranch === b ? "#fff" : "#64748b",
-              }}>
-              {b}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          {["All", "Placed", "Unplaced"].map((p) => (
-            <button
-              key={p}
-              onClick={() => setFilterPlaced(p)}
-              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{
-                backgroundColor: filterPlaced === p ? "#1a2340" : "#f1f5f9",
-                color: filterPlaced === p ? "#fff" : "#64748b",
-              }}>
-              {p}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Table */}
       <div
         className="bg-white rounded-2xl overflow-hidden"
-        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+      >
         <div className="px-5 py-3 border-b" style={{ borderColor: "#f1f5f9" }}>
           <span className="text-sm font-medium" style={{ color: "#64748b" }}>
             {filtered.length} students
@@ -565,7 +435,8 @@ export default function Students() {
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-xs font-semibold"
-                    style={{ color: "#64748b" }}>
+                    style={{ color: "#64748b" }}
+                  >
                     {h}
                   </th>
                 ))}
@@ -580,7 +451,8 @@ export default function Students() {
                       <div>
                         <div
                           className="text-sm font-medium"
-                          style={{ color: "#0f172a" }}>
+                          style={{ color: "#0f172a" }}
+                        >
                           {s.name}
                         </div>
                         <div className="text-xs" style={{ color: "#94a3b8" }}>
@@ -591,27 +463,32 @@ export default function Students() {
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    style={{ color: "#64748b" }}>
+                    style={{ color: "#64748b" }}
+                  >
                     {s.roll}
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    style={{ color: "#334155" }}>
+                    style={{ color: "#334155" }}
+                  >
                     {s.branch}
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-semibold"
-                    style={{ color: "#0f172a" }}>
+                    style={{ color: "#0f172a" }}
+                  >
                     {s.cgpa}
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    style={{ color: "#334155" }}>
+                    style={{ color: "#334155" }}
+                  >
                     {s.tenth}%
                   </td>
                   <td
                     className="px-4 py-3 text-sm"
-                    style={{ color: "#334155" }}>
+                    style={{ color: "#334155" }}
+                  >
                     {s.twelfth}%
                   </td>
                   <td className="px-4 py-3">
@@ -620,7 +497,8 @@ export default function Students() {
                       style={{
                         backgroundColor: s.backlog ? "#fee2e2" : "#d1fae5",
                         color: s.backlog ? "#dc2626" : "#059669",
-                      }}>
+                      }}
+                    >
                       {s.backlog ? "Yes" : "No"}
                     </span>
                   </td>
@@ -632,12 +510,14 @@ export default function Students() {
                           style={{
                             backgroundColor: "#ede9fe",
                             color: "#6c63ff",
-                          }}>
+                          }}
+                        >
                           Placed
                         </span>
                         <div
                           className="text-xs mt-1"
-                          style={{ color: "#94a3b8" }}>
+                          style={{ color: "#94a3b8" }}
+                        >
                           {s.company} · {s.ctc}
                         </div>
                       </div>
@@ -647,7 +527,8 @@ export default function Students() {
                         style={{
                           backgroundColor: "#fef3c7",
                           color: "#d97706",
-                        }}>
+                        }}
+                      >
                         Unplaced
                       </span>
                     )}
@@ -655,17 +536,40 @@ export default function Students() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => setModal({ type: "edit", student: s })}
-                        title="Edit"
-                        className="p-1.5 rounded-lg hover:bg-yellow-50"
-                        style={{ color: "#f59e0b" }}>
+                        onClick={() => handleViewResume(s)}
+                        disabled={!s.hasResume}
+                        title={s.hasResume ? "View resume" : "No resume uploaded"}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ color: "#2563eb" }}
+                      >
                         <svg
                           width="15"
                           height="15"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="8" y1="13" x2="16" y2="13" />
+                          <line x1="8" y1="17" x2="16" y2="17" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setModal({ type: "edit", student: s })}
+                        title="Edit"
+                        className="p-1.5 rounded-lg hover:bg-yellow-50"
+                        style={{ color: "#f59e0b" }}
+                      >
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
@@ -674,14 +578,16 @@ export default function Students() {
                         onClick={() => setModal({ type: "delete", student: s })}
                         title="Delete"
                         className="p-1.5 rounded-lg hover:bg-red-50"
-                        style={{ color: "#ef4444" }}>
+                        style={{ color: "#ef4444" }}
+                      >
                         <svg
                           width="15"
                           height="15"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="2">
+                          strokeWidth="2"
+                        >
                           <polyline points="3 6 5 6 21 6" />
                           <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                           <path d="M10 11v6" />
@@ -697,7 +603,8 @@ export default function Students() {
                   <td
                     colSpan={9}
                     className="px-4 py-16 text-center text-sm"
-                    style={{ color: "#94a3b8" }}>
+                    style={{ color: "#94a3b8" }}
+                  >
                     No students found.
                   </td>
                 </tr>
@@ -707,15 +614,6 @@ export default function Students() {
         </div>
       </div>
 
-      {modal?.type === "add" && (
-        <Modal title="Add Student" onClose={() => setModal(null)}>
-          <StudentForm
-            initial={EMPTY_STUDENT}
-            onSave={handleSave}
-            onCancel={() => setModal(null)}
-          />
-        </Modal>
-      )}
       {modal?.type === "edit" && modal.student && (
         <Modal title="Edit Student" onClose={() => setModal(null)}>
           <StudentForm
@@ -730,7 +628,8 @@ export default function Students() {
           <div className="flex flex-col items-center gap-4 py-2">
             <div
               className="rounded-full flex items-center justify-center"
-              style={{ width: 52, height: 52, backgroundColor: "#fee2e2" }}>
+              style={{ width: 52, height: 52, backgroundColor: "#fee2e2" }}
+            >
               <svg
                 width="22"
                 height="22"
@@ -739,7 +638,8 @@ export default function Students() {
                 stroke="#ef4444"
                 strokeWidth="2"
                 strokeLinecap="round"
-                strokeLinejoin="round">
+                strokeLinejoin="round"
+              >
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                 <path d="M10 11v6" />
@@ -759,13 +659,15 @@ export default function Students() {
               <button
                 onClick={() => setModal(null)}
                 className="flex-1 rounded-xl py-2.5 text-sm font-semibold border"
-                style={{ borderColor: "#e2e8f0", color: "#64748b" }}>
+                style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+              >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white"
-                style={{ backgroundColor: "#ef4444" }}>
+                style={{ backgroundColor: "#ef4444" }}
+              >
                 Delete
               </button>
             </div>

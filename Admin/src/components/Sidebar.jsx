@@ -15,7 +15,8 @@ const navItems = [
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round">
+        strokeLinejoin="round"
+      >
         <rect x="3" y="3" width="7" height="7" />
 
         <rect x="14" y="3" width="7" height="7" />
@@ -31,7 +32,6 @@ const navItems = [
     key: "drives",
     label: "Placement Drives",
     path: "/drives",
-    badge: 8,
 
     icon: (
       <svg
@@ -42,7 +42,8 @@ const navItems = [
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round">
+        strokeLinejoin="round"
+      >
         <rect x="2" y="7" width="20" height="14" rx="2" />
 
         <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
@@ -64,7 +65,8 @@ const navItems = [
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round">
+        strokeLinejoin="round"
+      >
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
 
         <polyline points="14 2 14 8 20 8" />
@@ -92,7 +94,8 @@ const navItems = [
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round">
+        strokeLinejoin="round"
+      >
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
 
         <circle cx="9" cy="7" r="4" />
@@ -118,14 +121,35 @@ const navItems = [
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round">
+        strokeLinejoin="round"
+      >
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    ),
+  },
+  {
+    key: "resources",
+    label: "Interview Prep",
+    path: "/resources",
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
       </svg>
     ),
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onLogout }) {
   return (
     <div
       className="flex flex-col h-full"
@@ -133,13 +157,15 @@ export default function Sidebar() {
         backgroundColor: "#1a2340",
         width: 256,
         minWidth: 256,
-      }}>
+      }}
+    >
       {/* Logo */}
       <div
         className="flex items-center gap-3 px-5 py-5 border-b"
         style={{
           borderColor: "rgba(255,255,255,0.08)",
-        }}>
+        }}
+      >
         {/* Logo icon */}
         <div
           className="flex items-center justify-center rounded-xl"
@@ -147,7 +173,8 @@ export default function Sidebar() {
             width: 38,
             height: 38,
             background: "linear-gradient(135deg,#4f7ef7,#6c63ff)",
-          }}>
+          }}
+        >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
             <path
               d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
@@ -170,7 +197,8 @@ export default function Sidebar() {
             className="text-xs"
             style={{
               color: "#8899bb",
-            }}>
+            }}
+          >
             Admin Portal
           </div>
         </div>
@@ -183,7 +211,8 @@ export default function Sidebar() {
           className="text-xs font-semibold mb-3 px-3 tracking-widest uppercase"
           style={{
             color: "#5a6a8a",
-          }}>
+          }}
+        >
           Main Menu
         </div>
 
@@ -197,14 +226,16 @@ export default function Sidebar() {
                 backgroundColor: isActive ? "#4f7ef7" : "transparent",
 
                 color: isActive ? "#ffffff" : "#8899bb",
-              })}>
+              })}
+            >
               {({ isActive }) => (
                 <>
                   {/* Icon */}
                   <span
                     style={{
                       opacity: isActive ? 1 : 0.75,
-                    }}>
+                    }}
+                  >
                     {item.icon}
                   </span>
 
@@ -221,7 +252,8 @@ export default function Sidebar() {
                           : "#4f7ef7",
 
                         color: "#fff",
-                      }}>
+                      }}
+                    >
                       {item.badge}
                     </span>
                   )}
@@ -237,12 +269,14 @@ export default function Sidebar() {
         className="px-3 pb-4 border-t pt-4"
         style={{
           borderColor: "rgba(255,255,255,0.08)",
-        }}>
+        }}
+      >
         <div
           className="flex items-center gap-3 px-3 py-2 rounded-xl"
           style={{
             backgroundColor: "rgba(255,255,255,0.06)",
-          }}>
+          }}
+        >
           {/* Avatar */}
           <div
             className="flex items-center justify-center rounded-full text-xs font-bold text-white"
@@ -250,8 +284,9 @@ export default function Sidebar() {
               width: 32,
               height: 32,
               background: "linear-gradient(135deg,#4f7ef7,#6c63ff)",
-            }}>
-            AD
+            }}
+          >
+            A
           </div>
 
           {/* User details */}
@@ -264,24 +299,30 @@ export default function Sidebar() {
               className="text-xs truncate"
               style={{
                 color: "#5a6a8a",
-              }}>
+              }}
+            >
               Placement Officer
             </div>
           </div>
 
           {/* Logout */}
           <button
+            className="cursor-pointer"
             type="button"
+            onClick={onLogout}
+            aria-label="Log out"
             style={{
               color: "#5a6a8a",
-            }}>
+            }}
+          >
             <svg
               width="16"
               height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2">
+              strokeWidth="2"
+            >
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
 
               <polyline points="16 17 21 12 16 7" />
