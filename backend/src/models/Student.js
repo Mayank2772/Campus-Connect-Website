@@ -1,67 +1,204 @@
 const mongoose = require("mongoose");
 
 const studentSchema = new mongoose.Schema(
-    {
-        userId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
-            unique: true
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
+
+    // =========================
+    // BASIC INFORMATION
+    // =========================
+
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    lastName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    phone: {
+      type: String,
+      default: "",
+    },
+
+    rollNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    // =========================
+    // ACADEMIC DETAILS
+    // =========================
+    academicDetails: {
+      graduation: {
+        degree: {
+          type: String,
+          default: "B.Tech",
         },
 
-        rollNumber: {
-            type: String,
-            unique: true,
-            sparse: true
+        branch: {
+          type: String,
+          default: "Computer Science & Engineering",
         },
 
-        phone: String,
+        college: {
+          type: String,
+          default: "",
+        },
 
-        branch: String,
+        university: {
+          type: String,
+          default: "",
+        },
 
-        year: Number,
+        startYear: {
+          type: Number,
+          default: 0,
+        },
+
+        endYear: {
+          type: Number,
+          default: 0,
+        },
 
         cgpa: {
-            type: Number,
-            default: 0
+          type: Number,
+          default: 0,
+        },
+      },
+
+      class12: {
+        school: {
+          type: String,
+          default: "",
         },
 
-        backlogs: {
-            type: Number,
-            default: 0
+        board: {
+          type: String,
+          default: "",
         },
 
-        tenthPercentage: Number,
+        year: {
+          type: Number,
+          default: 0,
+        },
 
-        twelfthPercentage: Number,
+        percentage: {
+          type: Number,
+          default: 0,
+        },
+      },
 
-        skills: [String],
+      class10: {
+        school: {
+          type: String,
+          default: "",
+        },
 
-        projects: [
-            {
-                title: String,
-                description: String,
-                technologies: [String]
-            }
-        ],
+        board: {
+          type: String,
+          default: "",
+        },
 
-        certifications: [
-            {
-                name: String,
-                issuer: String,
-                year: Number
-            }
-        ],
+        year: {
+          type: Number,
+          default: 0,
+        },
 
-        resume: {
-            fileName: String,
-            filePath: String,
-            uploadedAt: Date
-        }
+        percentage: {
+          type: Number,
+          default: 0,
+        },
+      },
     },
-    {
-        timestamps: true
-    }
+
+    // =========================
+    // BACKLOGS
+    // =========================
+
+    activeBacklogs: {
+      type: Number,
+      default: 0,
+    },
+
+    // =========================
+    // OTHER PROFILE INFORMATION
+    // =========================
+
+    linkedin: {
+      type: String,
+      default: "",
+    },
+
+    github: {
+      type: String,
+      default: "",
+    },
+
+    portfolio: {
+      type: String,
+      default: "",
+    },
+
+    // =========================
+    // SKILLS
+    // =========================
+
+    skills: {
+      type: [String],
+      default: [],
+    },
+
+    // =========================
+    // PROJECTS
+    // =========================
+
+    projects: [
+      {
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+
+        tech: {
+          type: [String],
+          default: [],
+        },
+
+        description: {
+          type: String,
+          default: "",
+        },
+
+        link: {
+          type: String,
+          default: "",
+        },
+      },
+    ],
+    // =========================
+    // RESUME
+    // =========================
+
+    resume: {
+      type: String,
+      default: "",
+    },
+  },
+  {
+    timestamps: true,
+  },
 );
 
 module.exports = mongoose.model("Student", studentSchema);

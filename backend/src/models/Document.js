@@ -5,44 +5,61 @@ const documentSchema = new mongoose.Schema(
         studentId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Student",
-            required: true
+            required: true,
         },
 
         documentType: {
             type: String,
-            required: true
+            required: true,
         },
 
-        fileName: String,
+        fileName: {
+            type: String,
+            required: true,
+        },
+
+        mimeType: {
+            type: String,
+            required: true,
+        },
+
+        fileSize: {
+            type: Number,
+            required: true,
+        },
+
+        // Resume files are kept in MongoDB so uploads survive browser/device changes.
+        data: {
+            type: Buffer,
+            required: true,
+        },
 
         filePath: {
             type: String,
-            required: true
+            default: "database",
         },
 
         verificationStatus: {
             type: String,
-            enum: [
-                "pending",
-                "verified",
-                "rejected"
-            ],
-            default: "pending"
+            enum: ["pending", "verified", "rejected"],
+            default: "pending",
         },
 
         verifiedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
+            ref: "User",
         },
 
-        verifiedAt: Date
+        verifiedAt: Date,
     },
     {
-        timestamps: true
-    }
+        timestamps: true,
+    },
 );
+
+documentSchema.index({ studentId: 1, documentType: 1 }, { unique: true });
 
 module.exports = mongoose.model(
     "Document",
-    documentSchema
+    documentSchema,
 );
