@@ -522,7 +522,7 @@ export default function SettingsPage({ onNav, user, onSave }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Topbar title="Settings" onNav={onNav} />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto px-3 py-4 sm:p-6">
           <div className="max-w-4xl mx-auto">
             {/* =========================
                 SAVED MESSAGE

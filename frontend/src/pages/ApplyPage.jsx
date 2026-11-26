@@ -231,7 +231,7 @@ export default function ApplyPage({ drives, onApply, user }) {
       >
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Topbar title="Apply Now" />
-          <main className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
+          <main className="min-w-0 flex-1 overflow-y-auto px-3 py-4 sm:p-6 flex items-center justify-center">
             <div className="max-w-md w-full text-center">
               {/* Success animation */}
               <div className="relative w-24 h-24 mx-auto mb-6">
@@ -413,7 +413,7 @@ export default function ApplyPage({ drives, onApply, user }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Topbar title="Apply Now" />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto px-3 py-4 sm:p-6">
           {submitError && (
             <div
               className="max-w-4xl mx-auto mb-4 rounded-xl px-4 py-3 text-sm"

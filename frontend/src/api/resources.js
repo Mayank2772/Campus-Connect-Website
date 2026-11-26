@@ -1,16 +1,15 @@
-const API_URL = "http://localhost:8000/api/resources";
+import { API_BASE_URL } from "./config";
+const API_URL = `${API_BASE_URL}/resources`;
+import { request as apiRequest } from "./request";
 
 async function request(path = "", options = {}) {
-  const token = localStorage.getItem("token");
-  const response = await fetch(`${API_URL}${path}`, {
+  const { response, data } = await apiRequest(`${API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
-  const data = await response.json();
   if (!response.ok) {
     throw new Error(data.message || "Resource request failed");
   }
@@ -22,10 +21,11 @@ export function getResources() {
 }
 
 export async function fetchResourceFile(id, download = false) {
-  const token = localStorage.getItem("token");
-  const response = await fetch(
+  const { response } = await apiRequest(
     `${API_URL}/${id}/file${download ? "?download=1" : ""}`,
-    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    {},
+    "Unable to access resource file",
+    false,
   );
   if (!response.ok) throw new Error("Unable to access resource file");
   return response.blob();

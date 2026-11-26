@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:8000/api/drives";
+import { API_BASE_URL } from "./config";
+const API_URL = `${API_BASE_URL}/drives`;
+import { request as apiRequest } from "./request";
 
 function normalizeDrive(drive) {
   const deadlineDate = new Date(drive.deadline);
@@ -46,11 +48,7 @@ function normalizeDrive(drive) {
 }
 
 export async function getDrives() {
-  const token = localStorage.getItem("token");
-  const response = await fetch(API_URL, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await response.json();
+  const { response, data } = await apiRequest(API_URL);
   if (!response.ok) throw new Error(data.message || "Failed to fetch drives");
   return data.map(normalizeDrive);
 }

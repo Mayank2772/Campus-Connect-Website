@@ -23,6 +23,7 @@ function timeAgo(value) {
 export default function Topbar({ title, onNav }) {
   const [showNotifDrop, setShowNotifDrop] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [notificationError, setNotificationError] = useState("");
   const notificationRef = useRef(null);
   const [user] = useState(() => {
     try {
@@ -45,8 +46,15 @@ export default function Topbar({ title, onNav }) {
   useEffect(() => {
     const loadNotifications = () => {
       getNotifications()
-        .then(setNotifications)
-        .catch((error) => console.error("Notification fetch error:", error));
+        .then((data) => {
+          setNotifications(data);
+          setNotificationError("");
+        })
+        .catch((error) =>
+          setNotificationError(
+            error.message || "Unable to load notifications. Please try again.",
+          ),
+        );
     };
 
     loadNotifications();
@@ -76,8 +84,12 @@ export default function Topbar({ title, onNav }) {
       setNotifications((current) =>
         current.map((item) => (item._id === updated._id ? updated : item)),
       );
+      setNotificationError("");
     } catch (error) {
       console.error("Mark notification read error:", error);
+      setNotificationError(
+        error.message || "Unable to mark the notification as read.",
+      );
     }
   };
 
@@ -87,8 +99,12 @@ export default function Topbar({ title, onNav }) {
       setNotifications((current) =>
         current.map((notification) => ({ ...notification, isRead: true })),
       );
+      setNotificationError("");
     } catch (error) {
       console.error("Mark all notifications read error:", error);
+      setNotificationError(
+        error.message || "Unable to mark notifications as read.",
+      );
     }
   };
 
@@ -98,23 +114,35 @@ export default function Topbar({ title, onNav }) {
       setNotifications((current) =>
         current.filter((notification) => notification._id !== notificationId),
       );
+      setNotificationError("");
     } catch (error) {
       console.error("Delete notification error:", error);
+      setNotificationError(error.message || "Unable to delete notification.");
     }
   };
 
   return (
     <header
-      className="flex items-center justify-between px-6 h-16 flex-shrink-0 relative"
+      className="flex items-center justify-between px-3 sm:px-6 h-16 flex-shrink-0 relative"
       style={{ background: "#ffffff", borderBottom: "1px solid #e2e8f0" }}
     >
       {/* Page title */}
-      <h1
-        className="text-slate-900 text-lg font-semibold"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {title}
-      </h1>
+      <div className="flex min-w-0 items-center gap-2">
+        <button
+          type="button"
+          aria-label="Open navigation"
+          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
+          onClick={() => window.dispatchEvent(new Event("toggle-mobile-nav"))}
+        >
+          ☰
+        </button>
+        <h1
+          className="truncate text-slate-900 text-lg font-semibold"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {title}
+        </h1>
+      </div>
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
@@ -188,7 +216,7 @@ export default function Topbar({ title, onNav }) {
             <div
               className="absolute right-0 top-11 rounded-2xl shadow-xl overflow-hidden z-50"
               style={{
-                width: "300px",
+                width: "min(300px, calc(100vw - 1.5rem))",
                 background: "#fff",
                 border: "1px solid #e2e8f0",
               }}
@@ -211,9 +239,14 @@ export default function Topbar({ title, onNav }) {
                   Mark all read
                 </button>
               </div>
+              {notificationError && (
+                <p className="px-4 py-2 text-xs text-red-700" role="alert">
+                  {notificationError}
+                </p>
+              )}
               {notifications.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm text-slate-400">
-                  No notifications yet.
+                  {notificationError ? "Notifications are unavailable." : "No notifications yet."}
                 </div>
               ) : (
                 notifications.map((notification, i) => (

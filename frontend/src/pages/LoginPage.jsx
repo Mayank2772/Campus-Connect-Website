@@ -269,16 +269,11 @@ export default function LoginPage({ onLogin }) {
             </a>
           </p>
 
-          {/* Institution badge */}
-          <div className="mt-10 pt-6 border-t border-slate-100 text-center">
-            <p className="text-xs text-slate-400">Powered by</p>
-            <p
-              className="text-sm font-semibold text-slate-600 mt-0.5"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              TIET
-            </p>
-            <p className="text-xs text-slate-400">Training & Placement Cell</p>
+          <div className="mt-10 border-t border-slate-100 pt-6 text-center">
+            <Link to="/team" className="text-sm font-semibold text-blue-600 hover:underline">
+              Built for better beginnings
+            </Link>
+            <p className="mt-1 text-xs text-slate-400">Your placement journey, connected.</p>
           </div>
         </div>
       </div>

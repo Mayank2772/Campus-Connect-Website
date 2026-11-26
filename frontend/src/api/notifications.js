@@ -1,16 +1,15 @@
-const API_URL = "http://localhost:8000/api/notifications";
+import { API_BASE_URL } from "./config";
+const API_URL = `${API_BASE_URL}/notifications`;
+import { request as apiRequest } from "./request";
 
 async function request(path = "", options = {}) {
-  const token = localStorage.getItem("token");
-  const response = await fetch(`${API_URL}${path}`, {
+  const { response, data } = await apiRequest(`${API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
       ...options.headers,
     },
   });
-  const data = await response.json();
   if (!response.ok)
     throw new Error(data.message || "Notification request failed");
   return data;

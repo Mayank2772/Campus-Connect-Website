@@ -1,16 +1,15 @@
-const API_URL = "http://localhost:8000/api/applications";
+import { API_BASE_URL } from "./config";
+const API_URL = `${API_BASE_URL}/applications`;
+import { request as apiRequest } from "./request";
 
 export async function applyToDrive(driveId, payload = {}) {
-  const token = localStorage.getItem("token");
-  const response = await fetch(`${API_URL}/apply/${driveId}`, {
+  const { response, data } = await apiRequest(`${API_URL}/apply/${driveId}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(payload),
   });
-  const data = await response.json();
   if (!response.ok) {
     throw new Error(
       data.reason ? `${data.message}: ${data.reason}` : data.message || "Application failed",
@@ -20,13 +19,7 @@ export async function applyToDrive(driveId, payload = {}) {
 }
 
 export async function getMyApplications() {
-  const token = localStorage.getItem("token");
-  const response = await fetch(`${API_URL}/my`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const data = await response.json();
+  const { response, data } = await apiRequest(`${API_URL}/my`);
 
   if (!response.ok) {
     throw new Error(data.message || "Failed to load applications");

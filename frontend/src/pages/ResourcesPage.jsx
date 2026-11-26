@@ -77,7 +77,7 @@ export default function ResourcesPage({ onNav }) {
     <div className="flex h-screen overflow-hidden" style={{ background: "#f0f6ff" }}>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Topbar title="Interview Prep Resources" onNav={onNav} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto px-3 py-4 sm:p-6">
           <section
             className="rounded-3xl p-7 mb-6 text-white relative overflow-hidden"
             style={{ background: "linear-gradient(120deg, #172554, #2563eb 62%, #60a5fa)" }}
