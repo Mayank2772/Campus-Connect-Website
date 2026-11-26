@@ -64,12 +64,7 @@ router.delete("/resume", protect, authorize("student"), deleteResume);
 
 router.get("/resume-download/:token", downloadResumeByToken);
 
-router.get(
-  "/:id/resume",
-  protect,
-  authorize("admin"),
-  viewStudentResume,
-);
+router.get("/:id/resume", protect, authorize("admin"), viewStudentResume);
 
 router.put("/:id", protect, authorize("admin"), updateStudentByAdmin);
 

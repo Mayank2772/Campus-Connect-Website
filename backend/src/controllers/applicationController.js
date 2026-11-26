@@ -14,14 +14,13 @@ const escapeExcelCell = (value) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-const escapeExcelUrl = (value) =>
-  String(value ?? "").replace(/["<>]/g, "");
+const escapeExcelUrl = (value) => String(value ?? "").replace(/["<>]/g, "");
 
 const applyToDrive = async (req, res) => {
   try {
-    console.log('Apply request received for driveId:', req.params.driveId);
-    console.log('User ID:', req.user?.id);
-    
+    console.log("Apply request received for driveId:", req.params.driveId);
+    console.log("User ID:", req.user?.id);
+
     const student = await Student.findOne({
       userId: req.user.id,
     });
@@ -157,27 +156,27 @@ const applyToDrive = async (req, res) => {
       application,
     });
   } catch (error) {
-    console.error('Error in applyToDrive:', error);
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Error stack:', error.stack);
-    
+    console.error("Error in applyToDrive:", error);
+    console.error("Error message:", error.message);
+    console.error("Error code:", error.code);
+    console.error("Error stack:", error.stack);
+
     // Handle E11000 duplicate key error
     if (error.code === 11000) {
       return res.status(400).json({
         message: "You have already applied to this drive",
       });
     }
-    
+
     // Handle validation errors
-    if (error.code === 'VALIDATION_ERROR') {
+    if (error.code === "VALIDATION_ERROR") {
       return res.status(400).json({
         message: error.message,
       });
     }
 
     res.status(500).json({
-      message: error.message,
+      message: "Unable to submit application",
     });
   }
 };
@@ -204,8 +203,9 @@ const getMyApplications = async (req, res) => {
 
     res.json(applications);
   } catch (error) {
+    console.error("Get my applications error:", error);
     res.status(500).json({
-      message: error.message,
+      message: "Unable to load applications",
     });
   }
 };
@@ -235,7 +235,8 @@ const getAllApplications = async (req, res) => {
 
     res.json(validApplications);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Get applications error:", error);
+    res.status(500).json({ message: "Unable to load applications" });
   }
 };
 
@@ -261,8 +262,6 @@ const exportApplications = async (req, res) => {
         const student = application.student;
         const drive = application.drive;
         const graduation = student.academicDetails?.graduation || {};
-        const class10 = student.academicDetails?.class10 || {};
-        const class12 = student.academicDetails?.class12 || {};
         const resumeUrl = student.resume
           ? `${req.protocol}://${req.get("host")}/api/students/resume-download/${encodeURIComponent(
               jwt.sign(
@@ -278,32 +277,21 @@ const exportApplications = async (req, res) => {
           : "";
 
         return [
-          application.applicationId,
           `${student.firstName || ""} ${student.lastName || ""}`.trim(),
           student.userId?.email,
           student.phone || application.phone,
           student.rollNumber || application.rollNumber,
           graduation.degree,
           graduation.branch || application.branch,
-          application.semester,
-          graduation.college,
-          graduation.university,
-          graduation.startYear,
-          graduation.endYear,
           application.cgpa || graduation.cgpa,
-          application.tenthPercent || class10.percentage,
-          application.twelfthPercent || class12.percentage,
-          application.backlogs ?? student.activeBacklogs,
-          student.linkedin || application.linkedin,
-          student.github || application.github,
-          student.portfolio || application.portfolio,
-          (student.skills || []).join(", "),
           drive.company,
           drive.role,
-          drive.location,
           application.status,
-          application.appliedAt || application.createdAt,
-          application.coverLetter,
+          new Intl.DateTimeFormat("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }).format(new Date(application.appliedAt || application.createdAt)),
           resumeUrl
             ? `<a href="${escapeExcelUrl(resumeUrl)}">Download resume</a>`
             : "No resume uploaded",
@@ -311,49 +299,39 @@ const exportApplications = async (req, res) => {
       });
 
     const headers = [
-      "Application ID",
       "Student name",
       "Email",
       "Phone",
       "Roll number",
       "Degree",
       "Branch",
-      "Semester",
-      "College",
-      "University",
-      "Graduation start year",
-      "Graduation end year",
       "CGPA",
-      "10th percentage",
-      "12th percentage",
-      "Backlogs",
-      "LinkedIn",
-      "GitHub",
-      "Portfolio",
-      "Skills",
       "Company",
       "Role",
-      "Location",
       "Application status",
       "Applied on",
-      "Cover letter",
       "Resume",
     ];
     const tableRows = [headers, ...rows]
-      .map(
-        (row) =>
-          `<tr>${row
-            .map((cell) => {
-              const content =
-                typeof cell === "string" && cell.startsWith("<a ")
-                  ? cell
-                  : escapeExcelCell(cell);
-              return `<td>${content}</td>`;
-            })
-            .join("")}</tr>`,
-      )
+      .map((row, rowIndex) => {
+        const cellTag = rowIndex === 0 ? "th" : "td";
+        const cellStyle =
+          rowIndex === 0
+            ? "border:1px solid #cbd5e1;background-color:#eaf0fb;padding:6px;"
+            : "border:1px solid #cbd5e1;padding:6px;";
+
+        return `<tr>${row
+          .map((cell) => {
+            const content =
+              typeof cell === "string" && cell.startsWith("<a ")
+                ? cell
+                : escapeExcelCell(cell);
+            return `<${cellTag} style="${cellStyle}">${content}</${cellTag}>`;
+          })
+          .join("")}</tr>`;
+      })
       .join("");
-    const workbook = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table>${tableRows}</table></body></html>`;
+    const workbook = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;border:1px solid #cbd5e1;">${tableRows}</table></body></html>`;
     const suffix = req.query.driveId ? `-${req.query.driveId}` : "";
 
     res.set({
@@ -383,7 +361,8 @@ const updateApplicationStatus = async (req, res) => {
 
     res.json(application);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Update application status error:", error);
+    res.status(500).json({ message: "Unable to update application status" });
   }
 };
 

@@ -1,21 +1,19 @@
 const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
 
-    return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: "You do not have permission",
+      });
+    }
 
-        if (!req.user) {
-            return res.status(401).json({
-                message: "Authentication required"
-            });
-        }
-
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({
-                message: "You do not have permission"
-            });
-        }
-
-        next();
-    };
+    next();
+  };
 };
 
 module.exports = authorize;
